@@ -1,0 +1,1991 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BCG Utility-Analyse — Brogden–Cronbach–Gleser</title>
+<style>
+  :root {
+    --black:  #111111;
+    --white:  #ffffff;
+    --red:    #e41c24;
+    --gray:   #767676;
+    --light:  #f2f2f2;
+    --border: 1px solid #111111;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background: var(--white);
+    color: var(--black);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ─── Header ─────────────────────────────────────────────────────────── */
+
+  .header {
+    border-bottom: 3px solid var(--black);
+    padding: 1.75rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: end;
+  }
+
+  .header-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+    line-height: 1.1;
+  }
+
+  .header-subtitle {
+    font-size: 0.7rem;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-top: 0.35rem;
+  }
+
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.5rem;
+  }
+
+  .header-formula {
+    font-size: 1.05rem;
+    font-weight: 300;
+    letter-spacing: 0.02em;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  /* ─── Tooltip toggle button ───────────────────────────────────────────── */
+
+  .tip-toggle {
+    font-family: inherit;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.28rem 0.65rem;
+    border: var(--border);
+    background: var(--white);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+    white-space: nowrap;
+  }
+
+  .tip-toggle.active {
+    background: var(--black);
+    color: var(--white);
+  }
+
+  /* ─── Tooltip popup ───────────────────────────────────────────────────── */
+
+  #tooltip {
+    position: fixed;
+    background: var(--white);
+    border: var(--border);
+    box-shadow: 3px 3px 0 var(--black);
+    padding: 0.55rem 0.75rem;
+    font-size: 0.72rem;
+    line-height: 1.6;
+    max-width: 270px;
+    pointer-events: none;
+    z-index: 999;
+    display: none;
+  }
+
+  /* Dotted underline on annotated elements when tips are on */
+  body.tips-on [data-tip] {
+    cursor: help;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+    text-decoration-color: var(--gray);
+    text-underline-offset: 2px;
+  }
+
+  /* ─── Layout ──────────────────────────────────────────────────────────── */
+
+  .layout {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: calc(100vh - 80px);
+  }
+
+  .sidebar {
+    border-right: var(--border);
+    padding: 1.75rem 1.5rem;
+  }
+
+  .main {
+    padding: 1.75rem 2rem;
+  }
+
+  /* ─── Section labels ──────────────────────────────────────────────────── */
+
+  .label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--gray);
+    padding-bottom: 0.4rem;
+    border-bottom: var(--border);
+    margin-bottom: 1rem;
+  }
+
+  /* ─── Inputs ──────────────────────────────────────────────────────────── */
+
+  .input-group { margin-bottom: 1.25rem; }
+
+  .input-name {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    margin-bottom: 0.1rem;
+  }
+
+  .input-hint {
+    display: block;
+    font-size: 0.67rem;
+    color: var(--gray);
+    margin-bottom: 0.35rem;
+    line-height: 1.3;
+  }
+
+  .input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    flex: 1;
+    height: 2px;
+    background: var(--black);
+    outline: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    background: var(--red);
+    border: none;
+    cursor: pointer;
+  }
+
+  input[type="range"]::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    background: var(--red);
+    border: none;
+    border-radius: 0;
+    cursor: pointer;
+  }
+
+  .val {
+    font-size: 0.82rem;
+    font-weight: 700;
+    min-width: 68px;
+    text-align: right;
+  }
+
+  /* ─── Divider ─────────────────────────────────────────────────────────── */
+
+  .divider {
+    border: none;
+    border-top: var(--border);
+    margin: 1.25rem 0;
+  }
+
+  /* ─── Computed box ────────────────────────────────────────────────────── */
+
+  .computed-box {
+    background: var(--light);
+    padding: 0.65rem 0.75rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+  }
+
+  .computed-box-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray);
+  }
+
+  .computed-box-sub {
+    font-size: 0.62rem;
+    color: var(--gray);
+    margin-top: 0.1rem;
+  }
+
+  .computed-box-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--red);
+  }
+
+  /* ─── Presets ─────────────────────────────────────────────────────────── */
+
+  .preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .preset-btn {
+    font-family: inherit;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.6rem;
+    border: var(--border);
+    background: var(--white);
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .preset-btn:hover,
+  .preset-btn.active {
+    background: var(--black);
+    color: var(--white);
+  }
+
+  /* ─── Result grid ─────────────────────────────────────────────────────── */
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: var(--border);
+    border-left: var(--border);
+    margin-bottom: 2rem;
+  }
+
+  .result-cell {
+    border-right: var(--border);
+    border-bottom: var(--border);
+    padding: 1rem 1.25rem;
+  }
+
+  .result-cell.full {
+    grid-column: 1 / -1;
+    background: var(--black);
+    color: var(--white);
+  }
+
+  .result-cell-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 0.35rem;
+  }
+
+  .result-cell.full .result-cell-label { color: #888; }
+
+  .result-cell-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .result-cell.full .result-cell-value {
+    font-size: 2.2rem;
+    color: var(--red);
+  }
+
+  /* ─── Variant tabs ────────────────────────────────────────────────────── */
+
+  .tabs {
+    display: flex;
+    border-bottom: 3px solid var(--black);
+    margin-bottom: 1.5rem;
+  }
+
+  .tab {
+    font-family: inherit;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-right: var(--border);
+    background: none;
+    cursor: pointer;
+    transition: background 0.1s, color 0.1s;
+  }
+
+  .tab:last-child { border-right: none; }
+  .tab.active { background: var(--black); color: var(--white); }
+  .tab:not(.active):hover { background: var(--light); }
+
+  /* ─── Formula box ─────────────────────────────────────────────────────── */
+
+  .formula-box {
+    border-left: 4px solid var(--red);
+    padding: 0.85rem 1rem;
+    background: var(--light);
+    margin-bottom: 1.25rem;
+    font-size: 0.88rem;
+  }
+
+  .formula-box strong { font-weight: 700; }
+
+  .formula-box p {
+    font-size: 0.72rem;
+    color: var(--gray);
+    margin-top: 0.35rem;
+    line-height: 1.5;
+  }
+
+  /* ─── Comparison cells ────────────────────────────────────────────────── */
+
+  .comp-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-top: var(--border);
+    border-left: var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .comp-cell {
+    border-right: var(--border);
+    border-bottom: var(--border);
+    padding: 1rem 1.25rem;
+    text-align: center;
+  }
+
+  .comp-cell.alt { background: var(--light); }
+
+  .comp-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 0.5rem;
+  }
+
+  .comp-value {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  .comp-value.dim { color: var(--gray); }
+  .comp-value.accent { color: var(--red); }
+
+  .comp-detail {
+    font-size: 0.7rem;
+    color: var(--gray);
+    margin-top: 0.3rem;
+  }
+
+  /* ─── Bar chart ───────────────────────────────────────────────────────── */
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 190px 1fr 90px;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+  }
+
+  .bar-name {
+    font-size: 0.7rem;
+    text-align: right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-track {
+    height: 18px;
+    background: var(--light);
+    border: var(--border);
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--black);
+    transition: width 0.4s ease;
+  }
+
+  .bar-fill.dim { background: var(--gray); }
+
+  .bar-amount {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-align: right;
+  }
+
+  .bar-amount.dim { color: var(--gray); }
+
+  /* ─── Sturman tab ────────────────────────────────────────────────────── */
+
+  .sturman-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 900px) {
+    .sturman-grid { grid-template-columns: 1fr; }
+  }
+
+  .s-group { margin-bottom: 1rem; }
+
+  .s-name {
+    display: block;
+    font-size: 0.67rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 0.1rem;
+  }
+
+  .s-hint {
+    display: block;
+    font-size: 0.62rem;
+    color: var(--gray);
+    margin-bottom: 0.3rem;
+    line-height: 1.3;
+  }
+
+  .s-row { display: flex; align-items: center; gap: 0.5rem; }
+
+  .s-val {
+    font-size: 0.78rem;
+    font-weight: 700;
+    min-width: 48px;
+    text-align: right;
+  }
+
+  .wf-table {
+    border-top: var(--border);
+    border-left: var(--border);
+    margin-bottom: 1.5rem;
+  }
+
+  .wf-row {
+    display: grid;
+    grid-template-columns: 1fr 150px 80px;
+    border-right: var(--border);
+    border-bottom: var(--border);
+  }
+
+  .wf-row:last-child { border-bottom: none; }
+  .wf-row.wf-total { background: var(--black); color: var(--white); }
+
+  .wf-cell {
+    padding: 0.65rem 0.9rem;
+    border-right: var(--border);
+  }
+
+  .wf-row.wf-total .wf-cell { border-right: 1px solid #444; }
+  .wf-cell:last-child,
+  .wf-row.wf-total .wf-cell:last-child { border-right: none; }
+
+  .wf-lbl {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--gray);
+    margin-bottom: 0.15rem;
+  }
+
+  .wf-row.wf-total .wf-lbl { color: #888; }
+
+  .wf-num { font-size: 0.95rem; font-weight: 700; }
+  .wf-row.wf-total .wf-num { font-size: 1.5rem; color: var(--red); }
+
+  .wf-pct {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--gray);
+  }
+
+  .wf-row.wf-total .wf-pct { color: #ccc; font-size: 0.82rem; }
+
+  /* ─── Footnote ────────────────────────────────────────────────────────── */
+
+  .footnote {
+    border-top: var(--border);
+    padding: 1.25rem 2rem;
+    font-size: 0.67rem;
+    color: var(--gray);
+    line-height: 1.7;
+  }
+
+  /* ─── Modal ──────────────────────────────────────────────────────────── */
+
+  .modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(17,17,17,0.55);
+    z-index: 1000;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 4rem 1rem 2rem;
+    overflow-y: auto;
+  }
+
+  .modal-backdrop.open { display: flex; }
+
+  .modal {
+    background: var(--white);
+    border: 3px solid var(--black);
+    width: 100%;
+    max-width: 680px;
+    position: relative;
+  }
+
+  .modal-header {
+    border-bottom: var(--border);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .modal-close {
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 700;
+    background: none;
+    border: none;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.1rem 0.3rem;
+  }
+
+  .modal-close:hover { background: var(--black); color: var(--white); }
+
+  .modal-body {
+    padding: 1.5rem 1.25rem;
+    font-size: 0.78rem;
+    line-height: 1.8;
+    color: var(--black);
+  }
+
+  .modal-body p { margin-bottom: 0.75rem; }
+  .modal-body h2 { font-size: 0.67rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin: 1.5rem 0 0.4rem; border-top: var(--border); padding-top: 0.75rem; }
+  .modal-body h2:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .modal-body ul { margin: 0 0 0.75rem 1.2rem; }
+  .modal-body li { margin-bottom: 0.2rem; }
+  .modal-body a { color: var(--black); }
+
+  .footer-bar {
+    border-top: 3px solid var(--black);
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.62rem;
+    color: var(--gray);
+  }
+
+  .footer-links { display: flex; gap: 1.25rem; }
+
+  .footer-links button {
+    font-family: inherit;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--gray);
+    padding: 0;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .footer-links button:hover { color: var(--black); }
+
+  /* ─── Responsive ──────────────────────────────────────────────────────── */
+
+  @media (max-width: 800px) {
+    .header { grid-template-columns: 1fr; }
+    .header-right { align-items: flex-start; }
+    .header-formula { text-align: left; }
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 3px solid var(--black); }
+    .result-grid { grid-template-columns: 1fr; }
+    .result-cell { grid-column: 1 !important; }
+    .comp-grid { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 130px 1fr 75px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── Tooltip popup ──────────────────────────────────────────────────── -->
+<div id="tooltip"></div>
+
+<!-- ─── Header ─────────────────────────────────────────────────────────── -->
+<div class="header">
+  <div>
+    <div class="header-title" data-i18n="header-title">Utility-Analyse<br>Brogden–Cronbach–Gleser</div>
+    <div class="header-subtitle" data-i18n="header-subtitle">Ökonomischer Nutzen von Personalauswahlverfahren</div>
+  </div>
+  <div class="header-right">
+    <div style="display:flex;gap:0.5rem;">
+      <button class="tip-toggle" id="tip_toggle" onclick="toggleTips()">Erklärungen einblenden</button>
+      <button class="tip-toggle" id="lang_toggle" onclick="setLang(currentLang==='de'?'en':'de')">EN</button>
+    </div>
+    <div class="header-formula">
+      <span data-tip="Nutzenzuwachs in €: Produktivitätsgewinn durch den Einsatz des valideren Auswahlverfahrens, kumuliert über alle Einstellungen und die Betriebszugehörigkeit."
+            data-tip-en="Utility gain in €: productivity improvement from using the more valid selection procedure, cumulated over all hires and their tenure.">ΔU</span>
+      =
+      <span data-tip="Anzahl der pro Jahr eingestellten Personen. Linearer Multiplikator: Doppelt so viele Einstellungen bedeuten doppelt so hohen Nutzengewinn."
+            data-tip-en="Number of persons hired per year. Linear multiplier: doubling the number of hires doubles the utility gain.">N</span>
+      ·
+      <span data-tip="Mittlere Betriebszugehörigkeit in Jahren. Gibt an, wie lange jede eingestellte Person ihren Leistungsbeitrag leistet — und damit, wie lange der Validitätsunterschied wirtschaftlich wirkt."
+            data-tip-en="Mean tenure in years. Determines how long each hire contributes their performance differential — and thus how long the validity gap has economic impact.">t</span>
+      ·
+      <span data-tip="Validitätsdifferenz r_neu − r_alt: Kernhebel des Modells. Je größer der Sprung in der Kriteriumsvalidität, desto höher der Nutzengewinn."
+            data-tip-en="Validity difference r_new − r_old: the core lever of the model. The larger the jump in criterion validity, the greater the utility gain.">Δr</span>
+      ·
+      <span data-tip="Standardabweichung der Arbeitsleistung in €. Eine Person, die eine SD über dem Durchschnitt liegt, erzeugt pro Jahr SDy € mehr Wert. Konservative Schätzung: 40 % des Gehalts (Schmidt & Hunter, 1982)."
+            data-tip-en="Standard deviation of job performance in €. A person one SD above average generates SDy € more value per year. Conservative estimate: 40 % of salary (Schmidt & Hunter, 1982).">SD<sub>y</sub></span>
+      ·
+      <span data-tip="Mittlerer standardisierter Prädiktorscore der selektierten Bewerber:innen. Berechnet nach Naylor & Shine (1965): φ(z_c) / SR. Steigt bei sinkender Selektionsquote — je selektiver, desto leistungsstärker ist der Durchschnitt der Eingestellten."
+            data-tip-en="Mean standardised predictor score of selected applicants. Computed per Naylor & Shine (1965): φ(z_c) / SR. Increases as the selection ratio decreases — the more selective, the higher the average performance of those hired.">Z̄<sub>s</sub></span>
+      −
+      <span data-tip="Kostendifferenz der Verfahren: (c_neu − c_alt) × N / SR. Berücksichtigt die Mehrkosten des neuen Verfahrens für alle getesteten Bewerber:innen pro Einstellungszyklus."
+            data-tip-en="Procedure cost difference: (c_new − c_old) × N / SR. Accounts for the additional cost of the new procedure for all applicants tested per hiring cycle.">ΔC</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Two-column layout ──────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- ─── Sidebar: Inputs ──────────────────────────────────────────────── -->
+  <div class="sidebar">
+
+    <div class="label" data-i18n="label-presets">Beispielszenarien</div>
+    <div class="preset-row">
+      <button class="preset-btn" onclick="setPreset('fachkraft', this)" data-i18n="preset-fachkraft">Fachkraft</button>
+      <button class="preset-btn" onclick="setPreset('management', this)" data-i18n="preset-management">Management</button>
+      <button class="preset-btn" onclick="setPreset('fuehrung', this)" data-i18n="preset-fuehrung">Führungskraft</button>
+      <button class="preset-btn" onclick="setPreset('gross', this)" data-i18n="preset-gross">Großunternehmen</button>
+    </div>
+
+    <hr class="divider">
+    <div class="label" data-i18n="label-org">Organisationsparameter</div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-n-name"
+        data-tip="Anzahl der pro Jahr eingestellten Personen. Linearer Multiplikator: Doppelt so viele Einstellungen bedeuten doppelt so hohen Nutzengewinn."
+        data-tip-en="Number of persons hired per year. Linear multiplier: doubling the number of hires doubles the utility gain.">
+        N — Einstellungen pro Jahr
+      </span>
+      <span class="input-hint" data-i18n="input-n-hint">Anzahl der jährlich eingestellten Personen</span>
+      <div class="input-row">
+        <input type="range" id="n_hires" min="1" max="1000" value="50" step="1" oninput="calculate()">
+        <div class="val" id="n_hires_val">50</div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-salary-name">Jahresgehalt (€)</span>
+      <span class="input-hint" data-i18n="input-salary-hint">Brutto-Jahresgehalt der zu besetzenden Positionen</span>
+      <div class="input-row">
+        <input type="range" id="salary" min="20000" max="250000" value="55000" step="1000" oninput="calculate()">
+        <div class="val" id="salary_val">55.000 €</div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-sdy-name"
+        data-tip="Standardabweichung der Arbeitsleistung als Prozentsatz des Gehalts. Bestimmt SDy in €: SDy = Gehalt × SDy%. Schmidt & Hunter (1982): ≥ 40 % als konservative Untergrenze. Becker & Huselid (1992) fanden 74–100 % im Einzelhandel. Steigt mit Jobkomplexität."
+        data-tip-en="Standard deviation of job performance as a percentage of salary. Determines SDy in €: SDy = Salary × SDy%. Schmidt & Hunter (1982): ≥ 40 % as a conservative lower bound. Becker & Huselid (1992): 74–100 % in retail. Increases with job complexity.">
+        SD<sub>y</sub> — Leistungsstreuung (% Gehalt)
+      </span>
+      <span class="input-hint" data-i18n="input-sdy-hint">Schmidt &amp; Hunter (1982): ≥ 40 %; komplexe Jobs: bis 100 %</span>
+      <div class="input-row">
+        <input type="range" id="sdy_pct" min="15" max="100" value="40" step="1" oninput="calculate()">
+        <div class="val" id="sdy_pct_val">40 %</div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-tenure-name"
+        data-tip="Mittlere Betriebszugehörigkeit in Jahren. Gibt an, wie lange jede eingestellte Person den Leistungsunterschied zwischen den Verfahren erbringt. Vereinfacht: kein Diskontierungszinssatz."
+        data-tip-en="Mean tenure in years. Determines how long each hire contributes their performance differential. Simplified: no discounting (see Sturman tab for discounted calculation).">
+        t — Betriebszugehörigkeit (Jahre)
+      </span>
+      <span class="input-hint" data-i18n="input-tenure-hint">Durchschnittliche Verweildauer eingestellter Personen</span>
+      <div class="input-row">
+        <input type="range" id="tenure" min="1" max="15" value="5" step="0.5" oninput="calculate()">
+        <div class="val" id="tenure_val">5,0 J.</div>
+      </div>
+    </div>
+
+    <hr class="divider">
+    <div class="label" data-i18n="label-diag">Diagnostische Parameter</div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-rold-name"
+        data-tip="Kriteriumsvalidität des bisherigen Verfahrens: Korrelation zwischen Prädiktorscore und Berufserfolg. Referenzwerte nach Schmidt & Hunter (1998): Bauchgefühl ≈ .05, Lebensalter ≈ .09, unstrukturiertes Interview ≈ .33."
+        data-tip-en="Criterion validity of the current procedure: correlation between predictor score and job performance. Reference values (Schmidt & Hunter, 1998): gut feeling ≈ .05, age ≈ .09, unstructured interview ≈ .33.">
+        r<sub>alt</sub> — Validität altes Verfahren
+      </span>
+      <span class="input-hint" data-i18n="input-rold-hint">z. B. unstrukturiertes Interview: .33; Bauchgefühl: ≈ .05</span>
+      <div class="input-row">
+        <input type="range" id="r_old" min="0" max="0.70" value="0.15" step="0.01" oninput="calculate()">
+        <div class="val" id="r_old_val">.15</div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-rnew-name"
+        data-tip="Kriteriumsvalidität des neuen Verfahrens. Referenzwerte nach Schmidt & Hunter (1998): strukturiertes Interview ≈ .51, Arbeitsprobe ≈ .54, GMA + strukturiertes Interview ≈ .63. Sackett et al. (2022) korrigierten diese Werte teilweise nach unten."
+        data-tip-en="Criterion validity of the new procedure. Reference values (Schmidt & Hunter, 1998): structured interview ≈ .51, work sample ≈ .54, GMA + structured interview ≈ .63. Sackett et al. (2022) revised some of these downward.">
+        r<sub>neu</sub> — Validität neues Verfahren
+      </span>
+      <span class="input-hint" data-i18n="input-rnew-hint">z. B. strukturiertes Interview: .51; GMA + Interview: .63</span>
+      <div class="input-row">
+        <input type="range" id="r_new" min="0" max="0.80" value="0.51" step="0.01" oninput="calculate()">
+        <div class="val" id="r_new_val">.51</div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-sr-name"
+        data-tip="Selektionsquote SR: Anteil der eingestellten an allen getesteten Bewerber:innen. SR = 0,30 bedeutet: 30 von 100 Bewerber:innen werden eingestellt. Niedrige SR = selektiver = höheres Z̄s = höherer Nutzengewinn."
+        data-tip-en="Selection ratio SR: fraction of applicants hired. SR = 0.30 means 30 out of 100 applicants are hired. Low SR = more selective = higher Z̄s = higher utility gain.">
+        SR — Selektionsquote
+      </span>
+      <span class="input-hint" data-i18n="input-sr-hint">Anteil eingestellter Bewerber:innen; niedriger SR = selektiver</span>
+      <div class="input-row">
+        <input type="range" id="sr" min="0.01" max="1.00" value="0.30" step="0.01" oninput="calculate()">
+        <div class="val" id="sr_val">.30</div>
+      </div>
+    </div>
+
+    <div class="computed-box"
+      data-tip="Naylor-Shine-Formel: Z̄s = φ(z_c) / SR, wobei φ die Normalverteilungsdichte am Selektionsschnitt z_c = Φ⁻¹(1 − SR) ist. Gibt an, wie weit der Durchschnitt der selektierten Gruppe über dem Populationsmittel liegt. Bei SR = 0,30 ergibt sich Z̄s ≈ 1,17."
+      data-tip-en="Naylor-Shine formula: Z̄s = φ(z_c) / SR, where φ is the normal density at the selection threshold z_c = Φ⁻¹(1 − SR). Indicates how far the mean of the selected group lies above the population mean. At SR = 0.30, Z̄s ≈ 1.17.">
+      <div>
+        <div class="computed-box-label" data-i18n="computed-zs-label">Berechneter Z̄<sub>s</sub></div>
+        <div class="computed-box-sub" data-i18n="computed-zs-sub">φ(z<sub>c</sub>) / SR — Naylor-Shine-Formel</div>
+      </div>
+      <div class="computed-box-value" id="zs_display">1.170</div>
+    </div>
+
+    <hr class="divider">
+    <div class="label" data-i18n="label-costs">Verfahrenskosten (optional)</div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-cnew-name"
+        data-tip="Kosten des neuen Verfahrens pro getesteter Person (z. B. Testlizenzen, Assessor-Honorare, Raumkosten). Wird mit N / SR multipliziert, da für N Einstellungen N / SR Personen getestet werden müssen."
+        data-tip-en="Cost of the new procedure per tested applicant (e.g. test licences, assessor fees, room costs). Multiplied by N / SR since N / SR applicants must be tested to achieve N hires.">
+        c<sub>neu</sub> — Kosten neues Verfahren (€/Person)
+      </span>
+      <span class="input-hint" data-i18n="input-cnew-hint">Testlizenzen, AC-Durchführung etc. pro getesteter Person</span>
+      <div class="input-row">
+        <input type="range" id="cost_new" min="0" max="2000" value="0" step="25" oninput="calculate()">
+        <div class="val" id="cost_new_val">0 €</div>
+      </div>
+    </div>
+
+    <div class="input-group">
+      <span class="input-name" data-i18n="input-cold-name"
+        data-tip="Kosten des bisherigen Verfahrens pro getesteter Person. Nur die Differenz (c_neu − c_alt) geht in den Nutzen ein. Ist c_alt höher als c_neu, erhöht der Kostenterm den Nettoutzen."
+        data-tip-en="Cost of the current procedure per tested applicant. Only the difference (c_new − c_old) enters the utility calculation. If c_old > c_new, the cost term increases net utility.">
+        c<sub>alt</sub> — Kosten altes Verfahren (€/Person)
+      </span>
+      <div class="input-row">
+        <input type="range" id="cost_old" min="0" max="2000" value="0" step="25" oninput="calculate()">
+        <div class="val" id="cost_old_val">0 €</div>
+      </div>
+    </div>
+
+  </div><!-- /sidebar -->
+
+  <!-- ─── Main: Results ────────────────────────────────────────────────── -->
+  <div class="main">
+
+    <!-- Results -->
+    <div class="label" data-i18n="label-results">Ergebnisse — BCG-Basismodell</div>
+
+    <div class="result-grid">
+      <div class="result-cell">
+        <div class="result-cell-label" data-i18n="res-dr-label"
+          data-tip="Validitätsdifferenz r_neu − r_alt: Der zentrale Hebel des BCG-Modells. Ein negativer Wert bedeutet, das neue Verfahren ist weniger valide als das alte."
+          data-tip-en="Validity difference r_new − r_old: the central lever of the BCG model. A negative value means the new procedure is less valid than the current one.">
+          Δr — Validitätsdifferenz
+        </div>
+        <div class="result-cell-value" id="res_delta_r">.36</div>
+      </div>
+      <div class="result-cell">
+        <div class="result-cell-label" data-i18n="res-sdy-label"
+          data-tip="SDy in €: Geldwert einer Standardabweichung der Arbeitsleistung. Eine leistungsstarke Person (eine SD über dem Durchschnitt) erzeugt pro Jahr diesen Betrag mehr Wert. Berechnet als Jahresgehalt × SDy%."
+          data-tip-en="SDy in €: monetary value of one standard deviation of job performance. A high-performing person (one SD above average) generates this amount in additional value per year. Computed as annual salary × SDy%.">
+          SD<sub>y</sub> in Euro
+        </div>
+        <div class="result-cell-value" id="res_sdy">22.000 €</div>
+      </div>
+      <div class="result-cell">
+        <div class="result-cell-label" data-i18n="res-per-hire-label"
+          data-tip="Erwarteter Nutzengewinn pro eingestellter Person pro Jahr: Δr × SDy × Z̄s. Dieser Betrag fällt für jede eingestellte Person an, solange sie im Unternehmen ist."
+          data-tip-en="Expected utility gain per hire per year: Δr × SDy × Z̄s. This amount accrues for each hired person as long as they remain with the organisation.">
+          Nutzen pro Einstellung pro Jahr
+        </div>
+        <div class="result-cell-value" id="res_per_hire">9.266 €</div>
+      </div>
+      <div class="result-cell">
+        <div class="result-cell-label" data-i18n="res-year-label"
+          data-tip="Gesamter jährlicher Nutzengewinn für alle N Einstellungen eines Jahres: N × Δr × SDy × Z̄s. Entsteht jedes Jahr neu, da jede Einstellungskohorte den Unterschied trägt."
+          data-tip-en="Total annual utility gain for all N hires: N × Δr × SDy × Z̄s. Arises each year anew, as each hiring cohort carries the performance differential.">
+          Nutzengewinn pro Jahr (gesamt)
+        </div>
+        <div class="result-cell-value" id="res_year">463.320 €</div>
+      </div>
+      <div class="result-cell full">
+        <div class="result-cell-label" data-i18n="res-total-label"
+          data-tip="Kumulierter Nutzengewinn über die Betriebszugehörigkeit t: Nutzen/Jahr × t. Vereinfachte Berechnung ohne Diskontierungszinssatz (nominaler Wert). Für barwertbasierte Berechnung wäre ein Abzinsungsfaktor anzuwenden."
+          data-tip-en="Cumulative utility gain over tenure t: utility/year × t. Simplified calculation without discounting (nominal value). For a present-value calculation a discounting factor should be applied (see Sturman tab).">
+          Kumulierter Nutzengewinn — über Betriebszugehörigkeit
+        </div>
+        <div class="result-cell-value" id="res_total">2.316.600 €</div>
+      </div>
+    </div>
+
+    <!-- Variants -->
+    <div class="label" data-i18n="label-variants">Modellvarianten</div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('basis', this)" data-i18n="tab-basis"
+        data-tip="Klassisches Brogden-Cronbach-Gleser-Modell (1949/1965). Brogden (1949) leitete die Grundformel ab; Cronbach & Gleser (1965) erweiterten sie auf Mehrperioden und verschiedene Entscheidungsstrategien."
+        data-tip-en="Classical Brogden-Cronbach-Gleser model (1949/1965). Brogden (1949) derived the basic formula; Cronbach & Gleser (1965) extended it to multi-period settings and various decision strategies.">
+        BCG Basismodell
+      </button>
+      <button class="tab" onclick="switchTab('kosten', this)" data-i18n="tab-kosten"
+        data-tip="Erweiterung um den Kostenterm: Der Nutzengewinn wird um die Differenz der Durchführungskosten (neues minus altes Verfahren) pro Einstellungszyklus bereinigt. Ermöglicht vollständige Kosten-Nutzen-Analyse."
+        data-tip-en="Extension including the cost term: the utility gain is adjusted for the difference in procedure costs (new minus current) per hiring cycle. Enables a complete cost-benefit analysis.">
+        Mit Verfahrenskosten
+      </button>
+      <button class="tab" onclick="switchTab('fsm', this)" data-i18n="tab-fsm"
+        data-tip="Variante nach Funke, Schuler & Moser (1995): Berechnet den absoluten Nutzen eines Verfahrens gegenüber Zufallsauswahl (r_alt = 0) — statt dem Differenznutzen gegenüber einem bestehenden Verfahren."
+        data-tip-en="Variant by Funke, Schuler & Moser (1995): computes the absolute utility of a procedure relative to random selection (r_old = 0) — rather than the differential utility relative to an existing procedure.">
+        Funke / Schuler / Moser
+      </button>
+      <button class="tab" onclick="switchTab('sturman', this)" data-i18n="tab-sturman"
+        data-tip="Korrekturfaktoren nach Boudreau (1983) und Sturman (2000): Ökonomische Variablen (Steuern, variable Kosten, Diskontierung), Angebotsablehnungen und Fluktuation reduzieren den BCG-Basiswert typischerweise um 60–95 %."
+        data-tip-en="Correction factors following Boudreau (1983) and Sturman (2000): economic variables (taxes, variable costs, discounting), offer rejections, and turnover typically reduce the BCG baseline by 60–95 %.">
+        Sturman (2000) — Korrekturen
+      </button>
+    </div>
+
+    <!-- Tab: Basis -->
+    <div id="tab_basis">
+      <div class="formula-box">
+        <strong>
+          <span data-tip="Nutzenzuwachs in €: Produktivitätsgewinn durch das validere Verfahren, kumuliert über alle Einstellungen und die Betriebszugehörigkeit."
+                data-tip-en="Utility gain in €: productivity improvement from the more valid procedure, cumulated over all hires and their tenure.">ΔU</span>
+          = N · t · (r<sub>neu</sub> − r<sub>alt</sub>) ·
+          <span data-tip="Standardabweichung der Arbeitsleistung in €. Bestimmt, wie viel eine leistungsstarke Person (1 SD über Ø) mehr produziert. Schätzung: 40 % des Gehalts (Schmidt & Hunter, 1982)."
+                data-tip-en="Standard deviation of job performance in €. Determines how much more a high-performing person (1 SD above average) produces. Estimate: 40 % of salary (Schmidt & Hunter, 1982).">SD<sub>y</sub></span>
+          ·
+          <span data-tip="Mittlerer standardisierter Prädiktorscore der Selektierten. Naylor-Shine-Formel: φ(z_c) / SR. Je selektiver das Verfahren (kleines SR), desto höher Z̄s."
+                data-tip-en="Mean standardised predictor score of selected applicants. Naylor-Shine formula: φ(z_c) / SR. The more selective the procedure (low SR), the higher Z̄s.">Z̄<sub>s</sub></span>
+        </strong>
+        <p data-i18n="basis-formula-p">
+          Brogden (1949) / Cronbach &amp; Gleser (1965).
+          Nutzengewinn durch valideres Verfahren gegenüber Baseline.
+          <span data-tip="Naylor & Shine (1965) leiteten die Formel Z̄s = φ(z_c) / SR für den mittleren Prädiktorscore der selektierten Gruppe ab, unter der Annahme normalverteilter Prädiktoren in der Bewerberpopulation.">Z̄<sub>s</sub> = φ(z<sub>c</sub>) / SR</span>
+          bezeichnet den mittleren standardisierten Prädiktorscore der selektierten Bewerber:innen
+          (<span data-tip="Naylor & Shine (1965) leiteten die Formel Z̄s = φ(z_c) / SR für den mittleren Prädiktorscore der selektierten Gruppe ab.">Naylor-Shine-Formel</span>).
+          Je selektiver das Verfahren (kleines SR), desto höher Z̄<sub>s</sub>.
+        </p>
+      </div>
+      <p id="basis_steps" style="font-size:0.78rem;color:var(--gray);line-height:1.9;"></p>
+    </div>
+
+    <!-- Tab: Kosten -->
+    <div id="tab_kosten" style="display:none">
+      <div class="formula-box">
+        <strong>ΔU<sub>netto</sub> = N · t · Δr · SD<sub>y</sub> · Z̄<sub>s</sub> − (c<sub>neu</sub> − c<sub>alt</sub>) · N / SR</strong>
+        <p data-i18n="kosten-formula-p">Kostenangepasstes BCG-Modell.
+          <span data-tip="c_neu und c_alt sind die Kosten pro getesteter Person für das neue bzw. alte Verfahren (z. B. Testlizenzen, Assessor-Honorare).">c<sub>neu</sub> und c<sub>alt</sub></span>
+          sind die Kosten pro getesteter Person.
+          <span data-tip="N / SR ergibt die Anzahl der Personen, die pro Einstellungszyklus getestet werden müssen. Bei 50 Einstellungen und SR = 0,30 sind das ca. 167 Personen.">N / SR</span>
+          ergibt die Anzahl der zu testenden Bewerber:innen pro Einstellungszyklus.
+          Kosten fallen jährlich an und werden über die Betriebszugehörigkeit kumuliert.
+        </p>
+      </div>
+      <div class="result-grid">
+        <div class="result-cell">
+          <div class="result-cell-label" data-i18n="kost-n-tested-label"
+            data-tip="Anzahl der Personen, die pro Jahr getestet werden müssen: N / SR. Bestimmt die Gesamtkosten des Verfahrens."
+            data-tip-en="Number of persons who must be tested per year: N / SR. Determines the total cost of the procedure.">
+            Anzahl getesteter Bewerber:innen / Jahr
+          </div>
+          <div class="result-cell-value" id="kost_n_tested">167</div>
+        </div>
+        <div class="result-cell">
+          <div class="result-cell-label" data-i18n="kost-cost-diff-label"
+            data-tip="Jährliche Kostendifferenz: (c_neu − c_alt) × N / SR. Positiver Wert = neues Verfahren ist teurer; negativer Wert = neues Verfahren ist günstiger."
+            data-tip-en="Annual cost difference: (c_new − c_old) × N / SR. Positive value = new procedure is more expensive; negative value = new procedure is cheaper.">
+            Δc · (N / SR) — Jährl. Kostendifferenz
+          </div>
+          <div class="result-cell-value" id="kost_cost_diff">0 €</div>
+        </div>
+        <div class="result-cell full">
+          <div class="result-cell-label" data-i18n="kost-net-label"
+            data-tip="Netto-Nutzengewinn über die Betriebszugehörigkeit: (Bruttonutzen/Jahr − Kostendifferenz/Jahr) × t."
+            data-tip-en="Net utility gain over tenure: (gross utility/year − cost difference/year) × t.">
+            Netto-Nutzengewinn (kumuliert)
+          </div>
+          <div class="result-cell-value" id="kost_net_total">2.316.600 €</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: FSM -->
+    <div id="tab_fsm" style="display:none">
+      <div class="formula-box">
+        <strong>U = N · t · r<sub>neu</sub> · SD<sub>y</sub> · Z̄<sub>s</sub> − C<sub>gesamt</sub></strong>
+        <p data-i18n="fsm-formula-p">
+          <span data-tip="Funke, Schuler & Moser (1995) präsentierten eine Variante des BCG-Modells, die den absoluten Nutzenwert gegenüber Zufallsauswahl (r = 0) berechnet — statt dem Differenznutzen gegenüber einem Alternativverfahren.">Funke, Schuler &amp; Moser (1995)</span>.
+          Absoluter Nutzenwert gegenüber
+          <span data-tip="Zufallsauswahl entspricht r_alt = 0: Kein Verfahren, das zwischen Bewerber:innen differenziert. Der Erwartungswert der Leistung entspricht dem Populationsmittel.">Zufallsauswahl (r<sub>alt</sub> = 0)</span>.
+          r<sub>neu</sub> ist die Validität des eingesetzten Verfahrens;
+          C<sub>gesamt</sub> = c<sub>neu</sub> · N / SR sind die Gesamtkosten des Verfahrens.
+          Beantwortet: Wie viel bringt das Verfahren gegenüber keiner Diagnostik?
+        </p>
+      </div>
+      <div class="result-grid">
+        <div class="result-cell">
+          <div class="result-cell-label" data-i18n="fsm-abs-label"
+            data-tip="Absoluter Nutzen pro Jahr gegenüber Zufallsauswahl: N × r_neu × SDy × Z̄s. Ohne Abzug von Verfahrenskosten."
+            data-tip-en="Absolute utility per year relative to random selection: N × r_new × SDy × Z̄s. Before deduction of procedure costs.">
+            Absoluter Nutzen (r<sub>neu</sub> vs. Zufall) / Jahr
+          </div>
+          <div class="result-cell-value" id="fsm_abs_year">—</div>
+        </div>
+        <div class="result-cell">
+          <div class="result-cell-label" data-i18n="fsm-costs-label"
+            data-tip="Gesamtkosten des neuen Verfahrens pro Jahr: c_neu × N / SR. Nur c_neu, da bei r_alt = 0 kein alternatives Verfahren existiert."
+            data-tip-en="Total costs of the new procedure per year: c_new × N / SR. Only c_new, since with r_old = 0 no alternative procedure exists.">
+            Gesamtkosten Verfahren / Jahr
+          </div>
+          <div class="result-cell-value" id="fsm_costs_year">0 €</div>
+        </div>
+        <div class="result-cell full">
+          <div class="result-cell-label" data-i18n="fsm-net-label"
+            data-tip="Netto-Absolutnutzen über die Betriebszugehörigkeit: (U_Jahr − C_gesamt) × t."
+            data-tip-en="Net absolute utility over tenure: (U_year − C_total) × t.">
+            Netto-Absolutnutzen (kumuliert, vs. Zufall)
+          </div>
+          <div class="result-cell-value" id="fsm_net_total">—</div>
+        </div>
+      </div>
+    </div><!-- /tab_fsm -->
+
+    <!-- Tab: Sturman (2000) -->
+    <div id="tab_sturman" style="display:none">
+      <div class="formula-box">
+        <strong>
+          ΔU<sub>korr</sub> = ΔU<sub>BCG</sub>
+          · (1 − <span data-tip="Steuersatz (TAX): Nutzengewinn ist steuerpflichtiges Einkommen. Korrekturfaktor: (1 − TAX). Reduziert Basis-BCG-Wert um den Steueranteil.">TAX</span>)
+          · (1 − <span data-tip="Variable Kosten (VAR): Mehrleistung verursacht anteilige variable Kosten (z. B. Materialverbrauch). Korrekturfaktor: (1 − VAR). Boudreau (1983) empfiehlt 15–35 %.">VAR</span>)
+          · <span data-tip="Diskontierter Kumulationsfaktor: Berücksichtigt Zeitwert des Geldes und Fluktuation gleichzeitig. q = (1−p)/(1+i); CF = q·(1−q^T)/(1−q), wobei p = Fluktuationsrate, i = Diskontrate, T = Betriebszugehörigkeit.">CF</span>(p, i, T)
+          · <span data-tip="Korrekturfaktor für Angebotsablehnungen (Murphy 1986, Case 2): Die besten Kandidaten lehnen häufiger ab, da sie mehr Alternativen haben. Der effektive Z̄s wird über die gestutzten Normalverteilungsmomente berechnet.">Z̄<sub>s,eff</sub></span> / Z̄<sub>s</sub>
+        </strong>
+        <p data-i18n="sturman-formula-p">
+          <span data-tip="Sturman (2000) fasste fünf Korrekturen aus der Literatur zusammen und quantifizierte ihren kumulativen Effekt: Median −91 %, Mittelwert −98 % gegenüber dem unkorrigierten BCG-Wert.">Sturman (2000)</span>,
+          <span data-tip="Boudreau (1983) ergänzte das BCG-Modell um ökonomische Korrekturen: Steuern, variable Kosten und Diskontierung. Alle drei reduzieren den Nutzenwert gegenüber dem naiven BCG-Schätzer.">Boudreau (1983)</span>.
+          Schrittweise Korrektur des BCG-Basiswerts.
+          Steuern und variable Kosten reduzieren den Betrag direkt;
+          Diskontierung und Fluktuation beeinflussen den Kumulationsfaktor;
+          Angebotsablehnungen senken den effektiven Z̄<sub>s</sub>.
+        </p>
+      </div>
+
+      <div class="sturman-grid">
+        <!-- Left: parameter sliders -->
+        <div>
+          <div class="label" data-i18n="sturman-econ-label" style="margin-bottom:1rem;">Ökonomische Korrekturen</div>
+
+          <div class="s-group">
+            <span class="s-name" data-i18n="s-tax-name"
+              data-tip="Steuersatz auf den Nutzengewinn. Der Nutzengewinn aus Produktivitätssteigerung gilt als steuerpflichtiges Einkommen des Unternehmens."
+              data-tip-en="Tax rate on the utility gain. The productivity-based utility gain is treated as taxable corporate income.">Steuersatz (TAX)</span>
+            <span class="s-hint" data-i18n="s-tax-hint">Anteil des Nutzengewinns, der als Steuer abgeführt wird</span>
+            <div class="s-row">
+              <input type="range" id="s_tax" min="0" max="60" step="1" value="30" oninput="syncS('s_tax','s_tax_val',v=>v+'\u202f%');calculate()">
+              <span class="s-val" id="s_tax_val">30&thinsp;%</span>
+            </div>
+          </div>
+
+          <div class="s-group">
+            <span class="s-name" data-i18n="s-var-name"
+              data-tip="Variable Kosten: Anteil des Nutzengewinns, der durch proportional steigende Kosten (Material, Energie, etc.) aufgezehrt wird. Boudreau (1983): 15–35 %."
+              data-tip-en="Variable costs: share of the utility gain absorbed by proportionally rising costs (materials, energy, etc.). Boudreau (1983): 15–35 %.">Variable Kosten (VAR)</span>
+            <span class="s-hint" data-i18n="s-var-hint">Kostenanteil an der Mehrleistung (z. B. Material, Energie)</span>
+            <div class="s-row">
+              <input type="range" id="s_var" min="0" max="35" step="1" value="15" oninput="syncS('s_var','s_var_val',v=>v+'\u202f%');calculate()">
+              <span class="s-val" id="s_var_val">15&thinsp;%</span>
+            </div>
+          </div>
+
+          <div class="s-group">
+            <span class="s-name" data-i18n="s-disc-name"
+              data-tip="Diskontrate: Zeitwert des Geldes. Zukünftige Nutzengewinne sind weniger wert als sofortige. Typisch: Kapitalkosten des Unternehmens (WACC), ca. 5–12 %."
+              data-tip-en="Discount rate: time value of money. Future utility gains are worth less than immediate ones. Typical: company cost of capital (WACC), approx. 5–12 %.">Diskontrate (i)</span>
+            <span class="s-hint" data-i18n="s-disc-hint">Jährliche Abdiskontierung zukünftiger Nutzengewinne</span>
+            <div class="s-row">
+              <input type="range" id="s_disc" min="0" max="15" step="0.5" value="5" oninput="syncS('s_disc','s_disc_val',v=>v+'\u202f%');calculate()">
+              <span class="s-val" id="s_disc_val">5&thinsp;%</span>
+            </div>
+          </div>
+
+          <div class="s-group">
+            <span class="s-name" data-i18n="s-turn-name"
+              data-tip="Fluktuationsrate: Anteil der eingestellten Personen, die pro Jahr das Unternehmen verlassen. Verkürzt die effektive Betriebszugehörigkeit und reduziert den Kumulationsfaktor."
+              data-tip-en="Turnover rate: fraction of hired persons who leave the organisation per year. Shortens effective tenure and reduces the cumulation factor.">Fluktuationsrate (p)</span>
+            <span class="s-hint" data-i18n="s-turn-hint">Jährliche Abgangswahrscheinlichkeit je eingestellter Person</span>
+            <div class="s-row">
+              <input type="range" id="s_turn" min="0" max="33" step="1" value="10" oninput="syncS('s_turn','s_turn_val',v=>v+'\u202f%');calculate()">
+              <span class="s-val" id="s_turn_val">10&thinsp;%</span>
+            </div>
+          </div>
+
+          <div class="s-group">
+            <span class="s-name" data-i18n="s-rej-name"
+              data-tip="Angebotsablehnungsrate: Anteil der besten Kandidaten, die ein Stellenangebot ablehnen. Murphy (1986) Case 2: Die besten Bewerber:innen lehnen häufiger ab, da sie mehr Alternativen haben."
+              data-tip-en="Offer rejection rate: fraction of top candidates who decline a job offer. Murphy (1986) Case 2: the best applicants reject more often, as they have more alternatives.">Angebotsablehnungen (p_r)</span>
+            <span class="s-hint" data-i18n="s-rej-hint">Anteil abgelehnter Angebote, vorwiegend durch Top-Kandidaten (Murphy 1986)</span>
+            <div class="s-row">
+              <input type="range" id="s_rej" min="0" max="50" step="1" value="20" oninput="syncS('s_rej','s_rej_val',v=>v+'\u202f%');calculate()">
+              <span class="s-val" id="s_rej_val">20&thinsp;%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: waterfall result table -->
+        <div>
+          <div class="label" data-i18n="sturman-waterfall-label" style="margin-bottom:1rem;">Schrittweise Korrektur</div>
+          <div class="wf-table">
+            <div class="wf-row">
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-base-lbl">Ausgangswert</div>
+                <div class="wf-num" id="wf_base">—</div>
+              </div>
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-bcg-lbl">BCG Basismodell</div>
+                <div class="wf-num" style="font-size:0.75rem; color:var(--gray)">N · t · Δr · SDy · Z̄s</div>
+              </div>
+              <div class="wf-cell wf-pct">100 %</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-tax-lbl">Nach Steuerkorrektur</div>
+                <div class="wf-num" id="wf_tax">—</div>
+              </div>
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-factor-lbl">Faktor (1 − TAX)</div>
+                <div class="wf-num" id="wf_tax_f">—</div>
+              </div>
+              <div class="wf-cell wf-pct" id="wf_tax_pct">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-var-lbl">Nach Variablenkostenkorrektur</div>
+                <div class="wf-num" id="wf_var">—</div>
+              </div>
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-factor-lbl">Faktor (1 − VAR)</div>
+                <div class="wf-num" id="wf_var_f">—</div>
+              </div>
+              <div class="wf-cell wf-pct" id="wf_var_pct">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-disc-lbl">Nach Diskontierung &amp; Fluktuation</div>
+                <div class="wf-num" id="wf_disc">—</div>
+              </div>
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-cf-lbl">Kumulationsfaktor CF</div>
+                <div class="wf-num" id="wf_disc_f">—</div>
+              </div>
+              <div class="wf-cell wf-pct" id="wf_disc_pct">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-rej-lbl">Nach Angebotsablehnungen</div>
+                <div class="wf-num" id="wf_rej">—</div>
+              </div>
+              <div class="wf-cell">
+                <div class="wf-lbl">Z̄s,eff / Z̄s</div>
+                <div class="wf-num" id="wf_rej_f">—</div>
+              </div>
+              <div class="wf-cell wf-pct" id="wf_rej_pct">—</div>
+            </div>
+            <div class="wf-row wf-total">
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-total-lbl">Korrigierter Nutzengewinn</div>
+                <div class="wf-num" id="wf_total">—</div>
+              </div>
+              <div class="wf-cell">
+                <div class="wf-lbl" data-i18n="wf-reduction-lbl">Reduktion ggü. BCG</div>
+                <div class="wf-num" id="wf_reduction">—</div>
+              </div>
+              <div class="wf-cell wf-pct" id="wf_total_pct">—</div>
+            </div>
+          </div>
+          <p data-i18n="sturman-note" style="font-size:0.67rem; color:var(--gray); line-height:1.5;">
+            Diskontierungs- und Fluktuationsfaktor ersetzt einfaches N·t.
+            Angebotsablehnungen nach Murphy (1986), Case 2 (selektive Ablehnung durch Top-Kandidaten).
+            Alle übrigen Basisparameter aus dem Sidebar-Regler.
+          </p>
+        </div>
+      </div>
+    </div><!-- /tab_sturman -->
+
+    <hr class="divider">
+
+    <!-- Taylor-Russell -->
+    <div class="label" data-i18n="tr-label"
+      data-tip="Taylor & Russell (1939) entwickelten Tafeln, die zeigen, welcher Anteil der eingestellten Personen tatsächlich geeignet ist — in Abhängigkeit von Validität, Selektionsquote und Basisrate."
+      data-tip-en="Taylor & Russell (1939) developed tables showing what fraction of hired persons are actually suitable — as a function of validity, selection ratio, and base rate.">
+      Fehleinstellungsquote — Taylor-Russell
+      (<span data-tip="Basisrate BR: Anteil geeigneter Personen in der Bewerberpopulation. BR = 50 % ist eine neutrale Standardannahme — die Hälfte der Bewerber:innen wäre auch ohne Testung geeignet. Höhere Basisrate lässt weniger Spielraum für Verbesserungen durch das Verfahren."
+            data-tip-en="Base rate BR: fraction of suitable persons in the applicant population. BR = 50 % is a neutral default — half of all applicants would succeed without testing. A higher base rate leaves less room for improvement through the procedure.">BR = 50 %</span>)
+    </div>
+
+    <div class="comp-grid">
+      <div class="comp-cell alt">
+        <div class="comp-label" data-i18n="tr-old-label">Altes Verfahren (r = <span id="tr_r_old">.15</span>)</div>
+        <div class="comp-value dim" id="tr_fail_old_pct">—</div>
+        <div class="comp-detail" data-i18n="tr-fail-label"
+          data-tip="Anteil der eingestellten Personen, die sich als ungeeignet erweisen (1 − Erfolgsquote). Bei r = 0 und BR = 50 % sind stets 50 % Fehlbesetzungen."
+          data-tip-en="Fraction of hired persons who turn out to be unsuitable (1 − success rate). At r = 0 and BR = 50 %, exactly 50 % of hires are unsuitable.">
+          Fehleinstellungen
+        </div>
+        <div class="comp-detail" id="tr_old_detail" style="margin-top:0.5rem;">
+          Von <span id="tr_n">50</span> Einst.: ca. <strong id="tr_fail_old_n">—</strong> Fehlbesetzungen
+        </div>
+      </div>
+      <div class="comp-cell">
+        <div class="comp-label" data-i18n="tr-new-label">Neues Verfahren (r = <span id="tr_r_new">.51</span>)</div>
+        <div class="comp-value accent" id="tr_fail_new_pct">—</div>
+        <div class="comp-detail" data-i18n="tr-fail-label"
+          data-tip="Anteil der eingestellten Personen, die sich als ungeeignet erweisen (1 − Erfolgsquote). Bei höherer Validität sinkt der Anteil der Fehlbesetzungen deutlich."
+          data-tip-en="Fraction of hired persons who turn out to be unsuitable (1 − success rate). At higher validity, the fraction of unsuitable hires decreases substantially.">
+          Fehleinstellungen
+        </div>
+        <div class="comp-detail" id="tr_new_detail" style="margin-top:0.5rem;">
+          Von <span id="tr_n2">50</span> Einst.: ca. <strong id="tr_fail_new_n">—</strong> Fehlbesetzungen
+        </div>
+      </div>
+    </div>
+
+    <p id="tr_avoided_p" style="font-size:0.78rem; margin-bottom:0.25rem;">
+      → <strong id="tr_avoided">—</strong> vermiedene Fehlbesetzungen pro Jahr
+    </p>
+    <p data-i18n="tr-note" style="font-size:0.67rem; color:var(--gray); margin-bottom:2rem;">
+      Berechnung über bivariate Normalverteilung (numerische Integration); Basisrate BR = 50 %.
+    </p>
+
+    <!-- Bar chart -->
+    <div class="label" data-i18n="bar-chart-label">Jährlicher Nutzengewinn nach Verfahren (vs. r<sub>alt</sub>)</div>
+    <div id="bar_chart"></div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ─── Footnote ────────────────────────────────────────────────────────── -->
+<div class="footnote" data-i18n="footnote">
+  <strong>Quellen &amp; Annahmen:</strong>
+  Brogden, H. E. (1949). When testing pays off. <em>Personnel Psychology.</em> ·
+  Cronbach, L. J. &amp; Gleser, G. C. (1965). <em>Psychological tests and personnel decisions</em> (2nd ed.). ·
+  Schmidt, F. L. &amp; Hunter, J. E. (1998). The validity and utility of selection methods. <em>Psychological Bulletin.</em> ·
+  Sackett, P. R. et al. (2022). Revisiting meta-analytic estimates. <em>Journal of Applied Psychology.</em> ·
+  Funke, U., Schuler, H. &amp; Moser, K. (1995). Nutzen der Personalauswahl. In H. Schuler (Hrsg.), <em>Organisationspsychologie</em> (2. Aufl.). ·
+  Boudreau, J. W. (1983). Economic considerations in estimating the utility of human resource productivity improvement programs. <em>Personnel Psychology.</em> ·
+  Murphy, K. R. (1986). When your top choice turns you down. <em>Psychological Bulletin.</em> ·
+  Sturman, M. C. (2000). Implications of utility analysis adjustments for estimates of human resource intervention value. <em>Journal of Management, 26</em>(2), 281–299. ·
+  SD<sub>y</sub> nach Schmidt &amp; Hunter (1982): ≥ 40 %; Becker &amp; Huselid (1992): 74–100 %. ·
+  Z̄<sub>s</sub> = φ(z<sub>c</sub>) / SR, Naylor &amp; Shine (1965). ·
+  Taylor-Russell (1939): numerische Integration über bivariate Normalverteilung. ·
+  Dargestellt ist der Brutto-Nutzengewinn vor Steuer- und Variablenkostenkorrektur.
+</div>
+
+<!-- ─── Footer bar ────────────────────────────────────────────────────────── -->
+<div class="footer-bar">
+  <span>
+    <a href="https://kthorstmann.github.io" target="_blank" rel="noopener" style="color:var(--gray);">Prof. Dr. Kai T. Horstmann</a> — Universität Siegen
+    &nbsp;·&nbsp;
+    <a href="https://www.psychologie.hu-berlin.de/de/mitarbeiter/1682288" target="_blank" rel="noopener" style="color:var(--gray);">Prof. Dr. Matthias Ziegler</a> — Humboldt-Universität zu Berlin
+    &nbsp;·&nbsp; <span id="footer_year"></span>
+    &nbsp;·&nbsp; <span data-i18n="footer-license">Lizenziert unter</span> <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener" style="color:var(--gray);">CC BY 4.0</a>
+  </span>
+  <div class="footer-links">
+    <button data-i18n="footer-impressum-btn" onclick="openModal('modal_impressum')">Impressum</button>
+    <button data-i18n="footer-datenschutz-btn" onclick="openModal('modal_datenschutz')">Datenschutz</button>
+  </div>
+</div>
+
+<!-- ─── Modal: Impressum ─────────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="modal_impressum" onclick="closeOnBackdrop(event, 'modal_impressum')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" data-i18n="modal-impressum-title">Impressum</span>
+      <button class="modal-close" onclick="closeModal('modal_impressum')" aria-label="Schließen">✕</button>
+    </div>
+    <div class="modal-body" data-i18n="modal-impressum-body">
+      <h2>Angaben gemäß § 5 TMG</h2>
+      <p>
+        Prof. Dr. Kai T. Horstmann<br>
+        Hornstr. 3<br>
+        10963 Berlin
+      </p>
+
+      <h2>Kontakt</h2>
+      <p>Universität Siegen, Fakultät II · Department Psychologie</p>
+
+      <h2>Umsatzsteuerliche Angaben</h2>
+      <p>Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.</p>
+
+      <h2>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
+      <p>
+        Prof. Dr. Kai T. Horstmann<br>
+        Hornstr. 3<br>
+        10963 Berlin
+      </p>
+
+      <h2>Haftung für Inhalte</h2>
+      <p>
+        Die Inhalte dieser Seite wurden mit größter Sorgfalt erstellt. Für die Richtigkeit,
+        Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen.
+      </p>
+
+      <h2>Urheberrecht &amp; Lizenz</h2>
+      <p>
+        Die Inhalte dieser Seite sind lizenziert unter der
+        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">Creative Commons Namensnennung 4.0 International (CC BY 4.0)</a>.
+        Weiterverwendung und Anpassung sind unter Nennung der Urheber gestattet.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Modal: Datenschutz ───────────────────────────────────────────────── -->
+<div class="modal-backdrop" id="modal_datenschutz" onclick="closeOnBackdrop(event, 'modal_datenschutz')">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" data-i18n="modal-datenschutz-title">Datenschutzerklärung</span>
+      <button class="modal-close" onclick="closeModal('modal_datenschutz')" aria-label="Schließen">✕</button>
+    </div>
+    <div class="modal-body" data-i18n="modal-datenschutz-body">
+      <h2>1. Verantwortlicher</h2>
+      <p>
+        Prof. Dr. Kai T. Horstmann<br>
+        Hornstr. 3<br>
+        10963 Berlin
+      </p>
+
+      <h2>2. Datenerhebung</h2>
+      <p>
+        Diese Seite erhebt und speichert <strong>keine personenbezogenen Daten</strong>.
+        Es werden keine Eingaben, keine Nutzungsdaten und keine Geräteinformationen durch
+        den Seitenbetreiber erfasst oder gespeichert. Alle Berechnungen finden ausschließlich
+        lokal im Browser statt.
+      </p>
+
+      <h2>3. Hosting (GitHub Pages)</h2>
+      <p>Diese Seite wird über GitHub Pages bereitgestellt:</p>
+      <p>
+        GitHub, Inc.<br>
+        88 Colin P. Kelly Jr. Street<br>
+        San Francisco, CA 94107, USA
+      </p>
+      <p>
+        GitHub kann beim Seitenaufruf technische Server-Log-Daten verarbeiten (z. B. IP-Adresse,
+        Zeitstempel, Browsertyp). Dies liegt außerhalb des Einflussbereichs des Seitenbetreibers.
+        Weitere Informationen: <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>.
+      </p>
+
+      <h2>4. Cookies &amp; Tracking</h2>
+      <p>Diese Seite verwendet keine Cookies, kein Tracking und kein Profiling.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Numerics ──────────────────────────────────────────────────────────────
+
+function normalPDF(x) {
+  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+}
+
+function normalCDF(x) {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const poly = t * (0.319381530 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  const p = 1 - normalPDF(x) * poly;
+  return x >= 0 ? p : 1 - p;
+}
+
+function normalCDFInverse(p) {
+  if (p <= 0) return -6;
+  if (p >= 1) return  6;
+  if (p < 0.5) return -normalCDFInverse(1 - p);
+  const t = Math.sqrt(-2 * Math.log(1 - p));
+  const c0 = 2.515517, c1 = 0.802853, c2 = 0.010328;
+  const d1 = 1.432788, d2 = 0.189269, d3 = 0.001308;
+  return t - (c0 + c1*t + c2*t*t) / (1 + d1*t + d2*t*t + d3*t*t*t);
+}
+
+function computeZs(sr) {
+  if (sr >= 1) return 0;
+  if (sr <= 0) return 4;
+  return normalPDF(normalCDFInverse(1 - sr)) / sr;
+}
+
+function taylorRussellSuccess(rho, sr, br) {
+  if (br === undefined) br = 0.5;
+  if (rho <= 0) return br;
+  if (sr >= 1)  return br;
+  const z_sr = normalCDFInverse(1 - sr);
+  const z_br = normalCDFInverse(1 - br);
+  const sqr  = Math.sqrt(1 - rho * rho);
+  const xi = [0.04830766568774, 0.14447196158280, 0.23928736225214, 0.33186860228212,
+               0.42135127613070, 0.50689990893226, 0.58771575724076, 0.66304426693021,
+               0.73218211874029, 0.79448379596794, 0.84936111165734, 0.89632115576605,
+               0.93490607593774, 0.96476225558751, 0.98561151154526, 0.99726386184948];
+  const wi = [0.09654008851473, 0.09563872007927, 0.09384439908080, 0.09117387869576,
+               0.08765209300440, 0.08331192422695, 0.07819389578707, 0.07234579410885,
+               0.06582222277636, 0.05868409347854, 0.05099805926238, 0.04283589802222,
+               0.03427386291302, 0.02539206530926, 0.01627439473091, 0.00701861000947];
+  const a = z_sr, b = z_sr + 10;
+  const mid = (a + b) / 2, half = (b - a) / 2;
+  let sum = 0;
+  for (let i = 0; i < 16; i++) {
+    const x1 = mid + half * xi[i], x2 = mid - half * xi[i];
+    sum += wi[i] * (
+      normalCDF((rho * x1 - z_br) / sqr) * normalPDF(x1) +
+      normalCDF((rho * x2 - z_br) / sqr) * normalPDF(x2)
+    );
+  }
+  return (sum * half) / sr;
+}
+
+// ─── i18n ──────────────────────────────────────────────────────────────────
+
+let currentLang = 'de';
+
+const TRANS = {
+  de: {
+    'page-title': 'BCG Utility-Analyse — Brogden–Cronbach–Gleser',
+    'header-title': 'Utility-Analyse<br>Brogden–Cronbach–Gleser',
+    'header-subtitle': 'Ökonomischer Nutzen von Personalauswahlverfahren',
+    'tip-toggle-off': 'Erklärungen einblenden',
+    'tip-toggle-on': 'Erklärungen ausblenden',
+    'label-presets': 'Beispielszenarien',
+    'preset-fachkraft': 'Fachkraft',
+    'preset-management': 'Management',
+    'preset-fuehrung': 'Führungskraft',
+    'preset-gross': 'Großunternehmen',
+    'label-org': 'Organisationsparameter',
+    'input-n-name': 'N — Einstellungen pro Jahr',
+    'input-n-hint': 'Anzahl der jährlich eingestellten Personen',
+    'input-salary-name': 'Jahresgehalt (€)',
+    'input-salary-hint': 'Brutto-Jahresgehalt der zu besetzenden Positionen',
+    'input-sdy-name': 'SD<sub>y</sub> — Leistungsstreuung (% Gehalt)',
+    'input-sdy-hint': 'Schmidt &amp; Hunter (1982): ≥ 40 %; komplexe Jobs: bis 100 %',
+    'input-tenure-name': 't — Betriebszugehörigkeit (Jahre)',
+    'input-tenure-hint': 'Durchschnittliche Verweildauer eingestellter Personen',
+    'label-diag': 'Diagnostische Parameter',
+    'input-rold-name': 'r<sub>alt</sub> — Validität altes Verfahren',
+    'input-rold-hint': 'z. B. unstrukturiertes Interview: .33; Bauchgefühl: ≈ .05',
+    'input-rnew-name': 'r<sub>neu</sub> — Validität neues Verfahren',
+    'input-rnew-hint': 'z. B. strukturiertes Interview: .51; GMA + Interview: .63',
+    'input-sr-name': 'SR — Selektionsquote',
+    'input-sr-hint': 'Anteil eingestellter Bewerber:innen; niedriger SR = selektiver',
+    'computed-zs-label': 'Berechneter Z̄<sub>s</sub>',
+    'computed-zs-sub': 'φ(z<sub>c</sub>) / SR — Naylor-Shine-Formel',
+    'label-costs': 'Verfahrenskosten (optional)',
+    'input-cnew-name': 'c<sub>neu</sub> — Kosten neues Verfahren (€/Person)',
+    'input-cnew-hint': 'Testlizenzen, AC-Durchführung etc. pro getesteter Person',
+    'input-cold-name': 'c<sub>alt</sub> — Kosten altes Verfahren (€/Person)',
+    'label-results': 'Ergebnisse — BCG-Basismodell',
+    'res-dr-label': 'Δr — Validitätsdifferenz',
+    'res-sdy-label': 'SD<sub>y</sub> in Euro',
+    'res-per-hire-label': 'Nutzen pro Einstellung pro Jahr',
+    'res-year-label': 'Nutzengewinn pro Jahr (gesamt)',
+    'res-total-label': 'Kumulierter Nutzengewinn — über Betriebszugehörigkeit',
+    'label-variants': 'Modellvarianten',
+    'tab-basis': 'BCG Basismodell',
+    'tab-kosten': 'Mit Verfahrenskosten',
+    'tab-fsm': 'Funke / Schuler / Moser',
+    'tab-sturman': 'Sturman (2000) — Korrekturen',
+    'basis-formula-p': 'Brogden (1949) / Cronbach &amp; Gleser (1965). Nutzengewinn durch valideres Verfahren gegenüber Baseline. <span data-tip="Naylor &amp; Shine (1965) leiteten die Formel Z̄s = φ(z_c) / SR für den mittleren Prädiktorscore der selektierten Gruppe ab, unter der Annahme normalverteilter Prädiktoren in der Bewerberpopulation.">Z̄<sub>s</sub> = φ(z<sub>c</sub>) / SR</span> bezeichnet den mittleren standardisierten Prädiktorscore der selektierten Bewerber:innen (<span data-tip="Naylor &amp; Shine (1965) leiteten die Formel Z̄s = φ(z_c) / SR für den mittleren Prädiktorscore der selektierten Gruppe ab.">Naylor-Shine-Formel</span>). Je selektiver das Verfahren (kleines SR), desto höher Z̄<sub>s</sub>.',
+    'kosten-formula-p': 'Kostenangepasstes BCG-Modell. <span data-tip="c_neu und c_alt sind die Kosten pro getesteter Person für das neue bzw. alte Verfahren (z. B. Testlizenzen, Assessor-Honorare).">c<sub>neu</sub> und c<sub>alt</sub></span> sind die Kosten pro getesteter Person. <span data-tip="N / SR ergibt die Anzahl der Personen, die pro Einstellungszyklus getestet werden müssen. Bei 50 Einstellungen und SR = 0,30 sind das ca. 167 Personen.">N / SR</span> ergibt die Anzahl der zu testenden Bewerber:innen pro Einstellungszyklus. Kosten fallen jährlich an und werden über die Betriebszugehörigkeit kumuliert.',
+    'kost-n-tested-label': 'Anzahl getesteter Bewerber:innen / Jahr',
+    'kost-cost-diff-label': 'Δc · (N / SR) — Jährl. Kostendifferenz',
+    'kost-net-label': 'Netto-Nutzengewinn (kumuliert)',
+    'fsm-formula-p': '<span data-tip="Funke, Schuler &amp; Moser (1995) präsentierten eine Variante des BCG-Modells, die den absoluten Nutzenwert gegenüber Zufallsauswahl (r = 0) berechnet — statt dem Differenznutzen gegenüber einem Alternativverfahren.">Funke, Schuler &amp; Moser (1995)</span>. Absoluter Nutzenwert gegenüber <span data-tip="Zufallsauswahl entspricht r_alt = 0: Kein Verfahren, das zwischen Bewerber:innen differenziert. Der Erwartungswert der Leistung entspricht dem Populationsmittel.">Zufallsauswahl (r<sub>alt</sub> = 0)</span>. r<sub>neu</sub> ist die Validität des eingesetzten Verfahrens; C<sub>gesamt</sub> = c<sub>neu</sub> · N / SR sind die Gesamtkosten des Verfahrens. Beantwortet: Wie viel bringt das Verfahren gegenüber keiner Diagnostik?',
+    'fsm-abs-label': 'Absoluter Nutzen (r<sub>neu</sub> vs. Zufall) / Jahr',
+    'fsm-costs-label': 'Gesamtkosten Verfahren / Jahr',
+    'fsm-net-label': 'Netto-Absolutnutzen (kumuliert, vs. Zufall)',
+    'sturman-formula-p': '<span data-tip="Sturman (2000) fasste fünf Korrekturen aus der Literatur zusammen und quantifizierte ihren kumulativen Effekt: Median −91 %, Mittelwert −98 % gegenüber dem unkorrigierten BCG-Wert.">Sturman (2000)</span>, <span data-tip="Boudreau (1983) ergänzte das BCG-Modell um ökonomische Korrekturen: Steuern, variable Kosten und Diskontierung. Alle drei reduzieren den Nutzenwert gegenüber dem naiven BCG-Schätzer.">Boudreau (1983)</span>. Schrittweise Korrektur des BCG-Basiswerts. Steuern und variable Kosten reduzieren den Betrag direkt; Diskontierung und Fluktuation beeinflussen den Kumulationsfaktor; Angebotsablehnungen senken den effektiven Z̄<sub>s</sub>.',
+    'sturman-econ-label': 'Ökonomische Korrekturen',
+    's-tax-name': 'Steuersatz (TAX)',
+    's-tax-hint': 'Anteil des Nutzengewinns, der als Steuer abgeführt wird',
+    's-var-name': 'Variable Kosten (VAR)',
+    's-var-hint': 'Kostenanteil an der Mehrleistung (z. B. Material, Energie)',
+    's-disc-name': 'Diskontrate (i)',
+    's-disc-hint': 'Jährliche Abdiskontierung zukünftiger Nutzengewinne',
+    's-turn-name': 'Fluktuationsrate (p)',
+    's-turn-hint': 'Jährliche Abgangswahrscheinlichkeit je eingestellter Person',
+    's-rej-name': 'Angebotsablehnungen (p_r)',
+    's-rej-hint': 'Anteil abgelehnter Angebote, vorwiegend durch Top-Kandidaten (Murphy 1986)',
+    'sturman-waterfall-label': 'Schrittweise Korrektur',
+    'wf-base-lbl': 'Ausgangswert',
+    'wf-bcg-lbl': 'BCG Basismodell',
+    'wf-tax-lbl': 'Nach Steuerkorrektur',
+    'wf-factor-lbl': 'Faktor',
+    'wf-var-lbl': 'Nach Variablenkostenkorrektur',
+    'wf-disc-lbl': 'Nach Diskontierung &amp; Fluktuation',
+    'wf-cf-lbl': 'Kumulationsfaktor CF',
+    'wf-rej-lbl': 'Nach Angebotsablehnungen',
+    'wf-total-lbl': 'Korrigierter Nutzengewinn',
+    'wf-reduction-lbl': 'Reduktion ggü. BCG',
+    'sturman-note': 'Diskontierungs- und Fluktuationsfaktor ersetzt einfaches N·t. Angebotsablehnungen nach Murphy (1986), Case 2 (selektive Ablehnung durch Top-Kandidaten). Alle übrigen Basisparameter aus dem Sidebar-Regler.',
+    'tr-label': 'Fehleinstellungsquote — Taylor-Russell (BR = 50 %)',
+    'tr-old-label': 'Altes Verfahren (r = <span id="tr_r_old">.15</span>)',
+    'tr-new-label': 'Neues Verfahren (r = <span id="tr_r_new">.51</span>)',
+    'tr-fail-label': 'Fehleinstellungen',
+    'tr-note': 'Berechnung über bivariate Normalverteilung (numerische Integration); Basisrate BR = 50 %.',
+    'bar-chart-label': 'Jährlicher Nutzengewinn nach Verfahren (vs. r<sub>alt</sub>)',
+    'footnote': '<strong>Quellen &amp; Annahmen:</strong> Brogden, H. E. (1949). When testing pays off. <em>Personnel Psychology.</em> · Cronbach, L. J. &amp; Gleser, G. C. (1965). <em>Psychological tests and personnel decisions</em> (2nd ed.). · Schmidt, F. L. &amp; Hunter, J. E. (1998). The validity and utility of selection methods. <em>Psychological Bulletin.</em> · Sackett, P. R. et al. (2022). Revisiting meta-analytic estimates. <em>Journal of Applied Psychology.</em> · Funke, U., Schuler, H. &amp; Moser, K. (1995). Nutzen der Personalauswahl. In H. Schuler (Hrsg.), <em>Organisationspsychologie</em> (2. Aufl.). · Boudreau, J. W. (1983). Economic considerations. <em>Personnel Psychology.</em> · Murphy, K. R. (1986). When your top choice turns you down. <em>Psychological Bulletin.</em> · Sturman, M. C. (2000). Implications of utility analysis adjustments. <em>Journal of Management, 26</em>(2), 281–299. · SD<sub>y</sub> nach Schmidt &amp; Hunter (1982): ≥ 40 %; Becker &amp; Huselid (1992): 74–100 %. · Z̄<sub>s</sub> = φ(z<sub>c</sub>) / SR, Naylor &amp; Shine (1965). · Taylor-Russell (1939): numerische Integration über bivariate Normalverteilung. · Dargestellt ist der Brutto-Nutzengewinn vor Steuer- und Variablenkostenkorrektur.',
+    'footer-impressum-btn': 'Impressum',
+    'footer-datenschutz-btn': 'Datenschutz',
+    'footer-license': 'Lizenziert unter',
+    'modal-impressum-title': 'Impressum',
+    'modal-datenschutz-title': 'Datenschutzerklärung',
+    'modal-impressum-body': '<h2>Angaben gemäß § 5 TMG</h2><p>Prof. Dr. Kai T. Horstmann<br>Hornstr. 3<br>10963 Berlin</p><h2>Kontakt</h2><p>Universität Siegen, Fakultät II · Department Psychologie</p><h2>Umsatzsteuerliche Angaben</h2><p>Gemäß § 19 UStG wird keine Umsatzsteuer berechnet.</p><h2>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2><p>Prof. Dr. Kai T. Horstmann<br>Hornstr. 3<br>10963 Berlin</p><h2>Haftung für Inhalte</h2><p>Die Inhalte dieser Seite wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen.</p><h2>Urheberrecht &amp; Lizenz</h2><p>Die Inhalte dieser Seite sind lizenziert unter der <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">Creative Commons Namensnennung 4.0 International (CC BY 4.0)</a>. Weiterverwendung und Anpassung sind unter Nennung der Urheber gestattet.</p>',
+    'modal-datenschutz-body': '<h2>1. Verantwortlicher</h2><p>Prof. Dr. Kai T. Horstmann<br>Hornstr. 3<br>10963 Berlin</p><h2>2. Datenerhebung</h2><p>Diese Seite erhebt und speichert <strong>keine personenbezogenen Daten</strong>. Es werden keine Eingaben, keine Nutzungsdaten und keine Geräteinformationen durch den Seitenbetreiber erfasst oder gespeichert. Alle Berechnungen finden ausschließlich lokal im Browser statt.</p><h2>3. Hosting (GitHub Pages)</h2><p>Diese Seite wird über GitHub Pages bereitgestellt:</p><p>GitHub, Inc.<br>88 Colin P. Kelly Jr. Street<br>San Francisco, CA 94107, USA</p><p>GitHub kann beim Seitenaufruf technische Server-Log-Daten verarbeiten. Weitere Informationen: <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>.</p><h2>4. Cookies &amp; Tracking</h2><p>Diese Seite verwendet keine Cookies, kein Tracking und kein Profiling.</p>',
+    'basis-steps-suffix': 'kumulierter Nutzengewinn',
+    'tr-detail-of': 'Von',
+    'tr-detail-hires': 'Einst.: ca.',
+    'tr-detail-misfires': 'Fehlbesetzungen',
+    'tr-avoided-text': 'vermiedene Fehlbesetzungen pro Jahr',
+  },
+  en: {
+    'page-title': 'BCG Utility Analysis — Brogden–Cronbach–Gleser',
+    'header-title': 'Utility Analysis<br>Brogden–Cronbach–Gleser',
+    'header-subtitle': 'Economic Value of Personnel Selection Procedures',
+    'tip-toggle-off': 'Show explanations',
+    'tip-toggle-on': 'Hide explanations',
+    'label-presets': 'Example Scenarios',
+    'preset-fachkraft': 'Specialist',
+    'preset-management': 'Management',
+    'preset-fuehrung': 'Executive',
+    'preset-gross': 'Large Enterprise',
+    'label-org': 'Organisational Parameters',
+    'input-n-name': 'N — Hires per Year',
+    'input-n-hint': 'Number of persons hired annually',
+    'input-salary-name': 'Annual Salary (€)',
+    'input-salary-hint': 'Gross annual salary of the positions to be filled',
+    'input-sdy-name': 'SD<sub>y</sub> — Performance Spread (% of Salary)',
+    'input-sdy-hint': 'Schmidt &amp; Hunter (1982): ≥ 40 %; complex jobs: up to 100 %',
+    'input-tenure-name': 't — Tenure (Years)',
+    'input-tenure-hint': 'Average duration of stay of hired persons',
+    'label-diag': 'Diagnostic Parameters',
+    'input-rold-name': 'r<sub>old</sub> — Validity of Current Procedure',
+    'input-rold-hint': 'e.g. unstructured interview: .33; gut feeling: ≈ .05',
+    'input-rnew-name': 'r<sub>new</sub> — Validity of New Procedure',
+    'input-rnew-hint': 'e.g. structured interview: .51; GMA + interview: .63',
+    'input-sr-name': 'SR — Selection Ratio',
+    'input-sr-hint': 'Fraction of applicants hired; lower SR = more selective',
+    'computed-zs-label': 'Computed Z̄<sub>s</sub>',
+    'computed-zs-sub': 'φ(z<sub>c</sub>) / SR — Naylor-Shine formula',
+    'label-costs': 'Procedure Costs (optional)',
+    'input-cnew-name': 'c<sub>new</sub> — Cost of New Procedure (€/person)',
+    'input-cnew-hint': 'Test licences, assessment centre fees, etc. per tested applicant',
+    'input-cold-name': 'c<sub>old</sub> — Cost of Current Procedure (€/person)',
+    'label-results': 'Results — BCG Base Model',
+    'res-dr-label': 'Δr — Validity Difference',
+    'res-sdy-label': 'SD<sub>y</sub> in Euro',
+    'res-per-hire-label': 'Utility per Hire per Year',
+    'res-year-label': 'Utility Gain per Year (total)',
+    'res-total-label': 'Cumulative Utility Gain — over Tenure',
+    'label-variants': 'Model Variants',
+    'tab-basis': 'BCG Base Model',
+    'tab-kosten': 'With Procedure Costs',
+    'tab-fsm': 'Funke / Schuler / Moser',
+    'tab-sturman': 'Sturman (2000) — Corrections',
+    'basis-formula-p': 'Brogden (1949) / Cronbach &amp; Gleser (1965). Utility gain from the more valid procedure relative to the baseline. <span data-tip="Naylor &amp; Shine (1965) derived the formula Z̄s = φ(z_c) / SR for the mean predictor score of the selected group, assuming normally distributed predictors in the applicant population.">Z̄<sub>s</sub> = φ(z<sub>c</sub>) / SR</span> is the mean standardised predictor score of selected applicants (<span data-tip="Naylor &amp; Shine (1965) derived the formula Z̄s = φ(z_c) / SR for the mean predictor score of the selected group.">Naylor-Shine formula</span>). The more selective the procedure (low SR), the higher Z̄<sub>s</sub>.',
+    'kosten-formula-p': 'Cost-adjusted BCG model. <span data-tip="c_new and c_old are the costs per tested applicant for the new and current procedure respectively (e.g. test licences, assessor fees).">c<sub>new</sub> and c<sub>old</sub></span> are the costs per tested applicant. <span data-tip="N / SR gives the number of persons who must be tested per hiring cycle. With 50 hires and SR = 0.30, that is approximately 167 persons.">N / SR</span> is the number of applicants to be tested per hiring cycle. Costs are incurred annually and cumulated over tenure.',
+    'kost-n-tested-label': 'Applicants Tested / Year',
+    'kost-cost-diff-label': 'Δc · (N / SR) — Annual Cost Difference',
+    'kost-net-label': 'Net Utility Gain (cumulated)',
+    'fsm-formula-p': '<span data-tip="Funke, Schuler &amp; Moser (1995) presented a variant of the BCG model that computes absolute utility relative to random selection (r = 0) — rather than the differential utility relative to an alternative procedure.">Funke, Schuler &amp; Moser (1995)</span>. Absolute utility relative to <span data-tip="Random selection corresponds to r_old = 0: no procedure that differentiates between applicants. The expected performance equals the population mean.">random selection (r<sub>old</sub> = 0)</span>. r<sub>new</sub> is the validity of the procedure used; C<sub>total</sub> = c<sub>new</sub> · N / SR are the total procedure costs. Answers: What does the procedure yield compared to no assessment?',
+    'fsm-abs-label': 'Absolute Utility (r<sub>new</sub> vs. Chance) / Year',
+    'fsm-costs-label': 'Total Procedure Costs / Year',
+    'fsm-net-label': 'Net Absolute Utility (cumulated, vs. Chance)',
+    'sturman-formula-p': '<span data-tip="Sturman (2000) synthesised five corrections from the literature and quantified their cumulative effect: median −91 %, mean −98 % relative to the uncorrected BCG estimate.">Sturman (2000)</span>, <span data-tip="Boudreau (1983) extended the BCG model with economic corrections: taxes, variable costs, and discounting. All three reduce the utility value relative to the naive BCG estimator.">Boudreau (1983)</span>. Step-by-step correction of the BCG baseline. Taxes and variable costs directly reduce the amount; discounting and turnover affect the cumulation factor; offer rejections lower the effective Z̄<sub>s</sub>.',
+    'sturman-econ-label': 'Economic Corrections',
+    's-tax-name': 'Tax Rate (TAX)',
+    's-tax-hint': 'Share of utility gain paid as corporate tax',
+    's-var-name': 'Variable Costs (VAR)',
+    's-var-hint': 'Cost share of the performance increase (e.g. materials, energy)',
+    's-disc-name': 'Discount Rate (i)',
+    's-disc-hint': 'Annual discounting of future utility gains',
+    's-turn-name': 'Turnover Rate (p)',
+    's-turn-hint': 'Annual probability of exit per hired person',
+    's-rej-name': 'Offer Rejections (p_r)',
+    's-rej-hint': 'Share of rejected offers, primarily by top candidates (Murphy 1986)',
+    'sturman-waterfall-label': 'Step-by-Step Correction',
+    'wf-base-lbl': 'Starting Value',
+    'wf-bcg-lbl': 'BCG Base Model',
+    'wf-tax-lbl': 'After Tax Correction',
+    'wf-factor-lbl': 'Factor',
+    'wf-var-lbl': 'After Variable Cost Correction',
+    'wf-disc-lbl': 'After Discounting &amp; Turnover',
+    'wf-cf-lbl': 'Cumulation Factor CF',
+    'wf-rej-lbl': 'After Offer Rejections',
+    'wf-total-lbl': 'Corrected Utility Gain',
+    'wf-reduction-lbl': 'Reduction vs. BCG',
+    'sturman-note': 'Discounting and turnover factor replaces flat N·t. Offer rejections follow Murphy (1986), Case 2 (selective rejection by top candidates). All other base parameters from the sidebar sliders.',
+    'tr-label': 'Mis-hire Rate — Taylor-Russell (BR = 50 %)',
+    'tr-old-label': 'Current Procedure (r = <span id="tr_r_old">.15</span>)',
+    'tr-new-label': 'New Procedure (r = <span id="tr_r_new">.51</span>)',
+    'tr-fail-label': 'Mis-hires',
+    'tr-note': 'Calculated via bivariate normal distribution (numerical integration); base rate BR = 50 %.',
+    'bar-chart-label': 'Annual Utility Gain by Procedure (vs. r<sub>old</sub>)',
+    'footnote': '<strong>Sources &amp; Assumptions:</strong> Brogden, H. E. (1949). When testing pays off. <em>Personnel Psychology.</em> · Cronbach, L. J. &amp; Gleser, G. C. (1965). <em>Psychological tests and personnel decisions</em> (2nd ed.). · Schmidt, F. L. &amp; Hunter, J. E. (1998). The validity and utility of selection methods. <em>Psychological Bulletin.</em> · Sackett, P. R. et al. (2022). Revisiting meta-analytic estimates. <em>Journal of Applied Psychology.</em> · Funke, U., Schuler, H. &amp; Moser, K. (1995). Nutzen der Personalauswahl. In H. Schuler (Ed.), <em>Organisationspsychologie</em> (2nd ed.). · Boudreau, J. W. (1983). Economic considerations. <em>Personnel Psychology.</em> · Murphy, K. R. (1986). When your top choice turns you down. <em>Psychological Bulletin.</em> · Sturman, M. C. (2000). Implications of utility analysis adjustments. <em>Journal of Management, 26</em>(2), 281–299. · SD<sub>y</sub> per Schmidt &amp; Hunter (1982): ≥ 40 %; Becker &amp; Huselid (1992): 74–100 %. · Z̄<sub>s</sub> = φ(z<sub>c</sub>) / SR, Naylor &amp; Shine (1965). · Taylor-Russell (1939): numerical integration over bivariate normal distribution. · Figures show gross utility gain before tax and variable cost correction.',
+    'footer-impressum-btn': 'Legal Notice',
+    'footer-datenschutz-btn': 'Privacy Policy',
+    'footer-license': 'Licensed under',
+    'modal-impressum-title': 'Legal Notice',
+    'modal-datenschutz-title': 'Privacy Policy',
+    'modal-impressum-body': '<h2>Information pursuant to § 5 TMG (German Telemedia Act)</h2><p>Prof. Dr. Kai T. Horstmann<br>Hornstr. 3<br>10963 Berlin, Germany</p><h2>Contact</h2><p>University of Siegen, Faculty II · Department of Psychology</p><h2>VAT</h2><p>Pursuant to § 19 UStG, no VAT is charged.</p><h2>Responsible for content pursuant to § 18 para. 2 MStV</h2><p>Prof. Dr. Kai T. Horstmann<br>Hornstr. 3<br>10963 Berlin, Germany</p><h2>Liability for Content</h2><p>The contents of this page have been prepared with the utmost care. However, we cannot guarantee the accuracy, completeness, or timeliness of the content.</p><h2>Copyright &amp; Licence</h2><p>The contents of this page are licensed under the <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">Creative Commons Attribution 4.0 International (CC BY 4.0)</a> licence. Reuse and adaptation are permitted with attribution of the authors.</p>',
+    'modal-datenschutz-body': '<h2>1. Controller</h2><p>Prof. Dr. Kai T. Horstmann<br>Hornstr. 3<br>10963 Berlin, Germany</p><h2>2. Data Collection</h2><p>This page collects and stores <strong>no personal data</strong>. No inputs, usage data, or device information are recorded or stored by the site operator. All calculations are performed exclusively locally in the browser.</p><h2>3. Hosting (GitHub Pages)</h2><p>This page is hosted via GitHub Pages:</p><p>GitHub, Inc.<br>88 Colin P. Kelly Jr. Street<br>San Francisco, CA 94107, USA</p><p>GitHub may process technical server-log data upon page access. Further information: <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub Privacy Statement</a>.</p><h2>4. Cookies &amp; Tracking</h2><p>This page uses no cookies, no tracking, and no profiling.</p>',
+    'basis-steps-suffix': 'cumulative utility gain',
+    'tr-detail-of': 'Of',
+    'tr-detail-hires': 'hires: approx.',
+    'tr-detail-misfires': 'mis-hires',
+    'tr-avoided-text': 'mis-hires avoided per year',
+  }
+};
+
+function setLang(lang) {
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.title = TRANS[lang]['page-title'];
+
+  // Update all data-i18n elements
+  document.querySelectorAll('[data-i18n]').forEach(function(el) {
+    const key = el.getAttribute('data-i18n');
+    if (TRANS[lang][key] !== undefined) el.innerHTML = TRANS[lang][key];
+  });
+
+  // Update data-tip from language-specific attribute
+  document.querySelectorAll('[data-tip-en]').forEach(function(el) {
+    const tip = lang === 'en' ? el.getAttribute('data-tip-en') : (el.getAttribute('data-tip-de') || el.getAttribute('data-tip') || '');
+    el.setAttribute('data-tip', tip);
+  });
+
+  // Lang toggle button
+  document.getElementById('lang_toggle').textContent = lang === 'de' ? 'EN' : 'DE';
+
+  // Tip toggle button text
+  const btn = document.getElementById('tip_toggle');
+  btn.textContent = tipsOn ? TRANS[lang]['tip-toggle-on'] : TRANS[lang]['tip-toggle-off'];
+
+  // Taylor-Russell comp-label spans hold live IDs, re-render after calculate
+  calculate();
+}
+
+// ─── Formatting ────────────────────────────────────────────────────────────
+
+function fmtEur(v) {
+  const s = v < 0 ? '−' : '';
+  const a = Math.abs(v);
+  const locale = currentLang === 'en' ? 'en-GB' : 'de-DE';
+  const mio = currentLang === 'en' ? ' M €' : ' Mio. €';
+  if (a >= 1e6) return s + (a / 1e6).toFixed(2).replace('.', currentLang === 'en' ? '.' : ',') + mio;
+  return s + Math.round(a).toLocaleString(locale) + ' €';
+}
+
+function fmtR(r) {
+  const s = r < 0 ? '−' : '';
+  return s + '.' + Math.round(Math.abs(r) * 100).toString().padStart(2, '0');
+}
+
+// ─── Procedures list (Schmidt & Hunter 1998) ───────────────────────────────
+
+const PROCEDURES = [
+  { name: 'Graphologie',                name_en: 'Graphology',
+    r: 0.02,
+    tip: 'Handschriftanalyse zur Persönlichkeitsbeurteilung. Keine empirisch belegte Kriteriumsvalidität für Arbeitsleistung (r ≈ .02). Als Auswahlverfahren wissenschaftlich nicht empfohlen.',
+    tip_en: 'Handwriting analysis for personality assessment. No empirically supported criterion validity for job performance (r ≈ .02). Not recommended as a selection procedure.' },
+  { name: 'Berufserfahrung (Jahre)',     name_en: 'Work Experience (years)',
+    r: 0.18,
+    tip: 'Anzahl der Berufsjahre als Selektionskriterium. Schwache Validität (r ≈ .18), da reine Erfahrungsdauer nicht zuverlässig mit Leistungsqualität korreliert.',
+    tip_en: 'Number of years of work experience as a selection criterion. Low validity (r ≈ .18), as duration of experience does not reliably correlate with performance quality.' },
+  { name: 'Gewissenhaftigkeit',         name_en: 'Conscientiousness',
+    r: 0.22,
+    tip: 'Big-Five-Persönlichkeitsmerkmal: Sorgfalt, Zuverlässigkeit, Planungsvermögen. Konsistenter Prädiktor für Arbeitsleistung über Berufsgruppen (r ≈ .22 nach Sackett et al., 2022).',
+    tip_en: 'Big Five personality trait: diligence, reliability, planning ability. Consistent predictor of job performance across occupational groups (r ≈ .22; Sackett et al., 2022).' },
+  { name: 'Unstrukturiertes Interview', name_en: 'Unstructured Interview',
+    r: 0.33,
+    tip: 'Freies Gespräch ohne standardisierte Fragen oder Bewertungsskalen. Anfällig für Wahrnehmungsverzerrungen (Halo, Ähnlichkeitseffekt). Validität ≈ .33 (Schmidt & Hunter, 1998).',
+    tip_en: 'Informal conversation without standardised questions or rating scales. Susceptible to perception biases (halo, similarity effect). Validity ≈ .33 (Schmidt & Hunter, 1998).' },
+  { name: 'Assessment Center',          name_en: 'Assessment Centre',
+    r: 0.37,
+    tip: 'Multimethodale Eignungsbeurteilung mit simulationsbasierten Übungen (z. B. Postkorb, Präsentation, Rollenspiel). Validität ≈ .37; aufwendig und kostspielig in der Durchführung.',
+    tip_en: 'Multi-method assessment using simulation-based exercises (e.g. in-basket, presentation, role play). Validity ≈ .37; resource-intensive and costly to administer.' },
+  { name: 'Integritätstest',            name_en: 'Integrity Test',
+    r: 0.41,
+    tip: 'Fragebogen zu Ehrlichkeit, Verlässlichkeit und kontraproduktivem Verhalten. Hohe Validität (r ≈ .41) bei niedrigen Kosten und einfacher Administration.',
+    tip_en: 'Questionnaire on honesty, reliability, and counterproductive behaviour. High validity (r ≈ .41) at low cost and easy to administer.' },
+  { name: 'Strukturiertes Interview',   name_en: 'Structured Interview',
+    r: 0.51,
+    tip: 'Standardisierte Fragen mit verhaltensverankerter Bewertungsskala (BARS). Validität ≈ .51 — erheblich valider als das unstrukturierte Interview. Kostengünstige Alternative zu Assessment Centern.',
+    tip_en: 'Standardised questions with behaviourally anchored rating scales (BARS). Validity ≈ .51 — substantially more valid than the unstructured interview. Cost-effective alternative to assessment centres.' },
+  { name: 'Arbeitsprobe',               name_en: 'Work Sample',
+    r: 0.54,
+    tip: 'Direkte Simulation beruflicher Kerntätigkeiten. Hohe Augenscheinvalidität und Akzeptanz bei Bewerber:innen. Validität ≈ .54; aufwendig für komplexe Tätigkeiten.',
+    tip_en: 'Direct simulation of core job activities. High face validity and acceptance among applicants. Validity ≈ .54; demanding to develop for complex roles.' },
+  { name: 'GMA + Struct. Interview',    name_en: 'GMA + Struct. Interview',
+    r: 0.63,
+    tip: 'Kombination von Allgemeiner kognitiver Fähigkeit (GMA) mit strukturiertem Interview. Beste Prognosevalidität (r ≈ .63 nach Schmidt & Hunter, 1998); empfohlen für komplexe und anspruchsvolle Positionen.',
+    tip_en: 'Combination of general mental ability (GMA) with structured interview. Best predictive validity (r ≈ .63; Schmidt & Hunter, 1998); recommended for complex and demanding positions.' },
+];
+
+// ─── Main calculation ──────────────────────────────────────────────────────
+
+function calculate() {
+  const N        = parseInt(document.getElementById('n_hires').value);
+  const salary   = parseInt(document.getElementById('salary').value);
+  const sdyPct   = parseInt(document.getElementById('sdy_pct').value);
+  const tenure   = parseFloat(document.getElementById('tenure').value);
+  const r_old    = parseFloat(document.getElementById('r_old').value);
+  const r_new    = parseFloat(document.getElementById('r_new').value);
+  const sr       = parseFloat(document.getElementById('sr').value);
+  const cost_new = parseFloat(document.getElementById('cost_new').value);
+  const cost_old = parseFloat(document.getElementById('cost_old').value);
+
+  document.getElementById('n_hires_val').textContent  = N.toLocaleString('de-DE');
+  document.getElementById('salary_val').textContent   = salary.toLocaleString('de-DE') + '\u202f€';
+  document.getElementById('sdy_pct_val').textContent  = sdyPct + '\u202f%';
+  document.getElementById('tenure_val').textContent   = tenure.toFixed(1).replace('.', ',') + '\u202fJ.';
+  document.getElementById('r_old_val').textContent    = fmtR(r_old);
+  document.getElementById('r_new_val').textContent    = fmtR(r_new);
+  document.getElementById('sr_val').textContent       = fmtR(sr);
+  document.getElementById('cost_new_val').textContent = cost_new.toLocaleString('de-DE') + '\u202f€';
+  document.getElementById('cost_old_val').textContent = cost_old.toLocaleString('de-DE') + '\u202f€';
+
+  const sdy        = salary * sdyPct / 100;
+  const zs         = computeZs(sr);
+  const delta_r    = r_new - r_old;
+  const u_per_hire = delta_r * sdy * zs;
+  const u_year     = N * u_per_hire;
+  const u_total    = u_year * tenure;
+
+  document.getElementById('zs_display').textContent   = zs.toFixed(3);
+  document.getElementById('res_delta_r').textContent  = fmtR(delta_r);
+  document.getElementById('res_sdy').textContent      = fmtEur(sdy);
+  document.getElementById('res_per_hire').textContent = fmtEur(u_per_hire);
+  document.getElementById('res_year').textContent     = fmtEur(u_year);
+  const totalEl = document.getElementById('res_total');
+  totalEl.textContent = fmtEur(u_total);
+  totalEl.style.color = u_total < 0 ? 'var(--gray)' : 'var(--red)';
+
+  document.getElementById('basis_steps').innerHTML =
+    `N = ${N} &nbsp;·&nbsp; t = ${tenure.toFixed(1)} &nbsp;·&nbsp; Δr = ${fmtR(delta_r)} &nbsp;·&nbsp; ` +
+    `SD<sub>y</sub> = ${fmtEur(sdy)} &nbsp;·&nbsp; Z̄<sub>s</sub> = ${zs.toFixed(3)}<br>` +
+    `<strong>= ${fmtEur(u_total)} ${TRANS[currentLang]['basis-steps-suffix']}</strong>`;
+
+  const n_tested   = N / sr;
+  const cost_diff  = (cost_new - cost_old) * n_tested;
+  const u_net_total = (u_year - cost_diff) * tenure;
+
+  document.getElementById('kost_n_tested').textContent  = Math.round(n_tested).toLocaleString('de-DE');
+  document.getElementById('kost_cost_diff').textContent = fmtEur(cost_diff);
+  const netEl = document.getElementById('kost_net_total');
+  netEl.textContent = fmtEur(u_net_total);
+  netEl.style.color = u_net_total < 0 ? 'var(--gray)' : 'var(--red)';
+
+  const u_fsm_year      = N * r_new * sdy * zs;
+  const c_fsm_year      = cost_new * n_tested;
+  const u_fsm_net_total = (u_fsm_year - c_fsm_year) * tenure;
+
+  document.getElementById('fsm_abs_year').textContent   = fmtEur(u_fsm_year);
+  document.getElementById('fsm_costs_year').textContent = fmtEur(c_fsm_year);
+  const fsmEl = document.getElementById('fsm_net_total');
+  fsmEl.textContent = fmtEur(u_fsm_net_total);
+  fsmEl.style.color = u_fsm_net_total < 0 ? 'var(--gray)' : 'var(--red)';
+
+  const succ_old   = taylorRussellSuccess(r_old, sr, 0.5);
+  const succ_new   = taylorRussellSuccess(r_new, sr, 0.5);
+  const fail_old_n = Math.round(N * (1 - succ_old));
+  const fail_new_n = Math.round(N * (1 - succ_new));
+
+  const T = TRANS[currentLang];
+  document.getElementById('tr_r_old').textContent        = fmtR(r_old);
+  document.getElementById('tr_r_new').textContent        = fmtR(r_new);
+  document.getElementById('tr_fail_old_pct').textContent = Math.round((1 - succ_old) * 100) + '\u202f%';
+  document.getElementById('tr_fail_new_pct').textContent = Math.round((1 - succ_new) * 100) + '\u202f%';
+  document.getElementById('tr_old_detail').innerHTML =
+    `${T['tr-detail-of']} <span id="tr_n">${N}</span> ${T['tr-detail-hires']} <strong id="tr_fail_old_n">${fail_old_n}</strong> ${T['tr-detail-misfires']}`;
+  document.getElementById('tr_new_detail').innerHTML =
+    `${T['tr-detail-of']} <span id="tr_n2">${N}</span> ${T['tr-detail-hires']} <strong id="tr_fail_new_n">${fail_new_n}</strong> ${T['tr-detail-misfires']}`;
+  document.getElementById('tr_avoided_p').innerHTML =
+    `→ <strong id="tr_avoided">${Math.max(0, fail_old_n - fail_new_n)}</strong> ${T['tr-avoided-text']}`;
+
+  renderBars(sdy, zs, N, r_old);
+
+  // ── Sturman (2000) corrections ───────────────────────────────────────────
+  const tax  = parseInt(document.getElementById('s_tax').value)  / 100;
+  const vari = parseInt(document.getElementById('s_var').value)  / 100;
+  const disc = parseFloat(document.getElementById('s_disc').value) / 100;
+  const turn = parseInt(document.getElementById('s_turn').value) / 100;
+  const p_r  = parseInt(document.getElementById('s_rej').value)  / 100;
+
+  const u_bcg = u_total; // BCG baseline (already computed above: N·t·Δr·SDy·Zs)
+
+  const u_after_tax  = u_bcg  * (1 - tax);
+  const u_after_var  = u_after_tax * (1 - vari);
+
+  // Replace flat N·t with discounted cumulative factor
+  const cf = discountCumFactor(turn, disc, tenure);
+  // u_disc replaces N·t factor: base unit is N·Δr·SDy·Zs (per-year without tenure)
+  const u_per_year_net = N * delta_r * sdy * zs * (1 - tax) * (1 - vari);
+  const u_after_disc = u_per_year_net * cf;
+
+  // Rejection correction: replace Zs with Zs_eff
+  const zs_eff = computeZsRejection(sr, p_r);
+  const zs_ratio = zs > 0 ? zs_eff / zs : 1;
+  const u_final = u_after_disc * zs_ratio;
+
+  const fmt2 = v => (v >= 0 ? '' : '−') + Math.abs(v).toFixed(2);
+  const pctOf = v => u_bcg !== 0 ? Math.round(v / u_bcg * 100) + '\u202f%' : '—';
+
+  document.getElementById('wf_base').textContent     = fmtEur(u_bcg);
+  document.getElementById('wf_tax').textContent      = fmtEur(u_after_tax);
+  document.getElementById('wf_tax_f').textContent    = fmt2(1 - tax);
+  document.getElementById('wf_tax_pct').textContent  = pctOf(u_after_tax);
+  document.getElementById('wf_var').textContent      = fmtEur(u_after_var);
+  document.getElementById('wf_var_f').textContent    = fmt2(1 - vari);
+  document.getElementById('wf_var_pct').textContent  = pctOf(u_after_var);
+  document.getElementById('wf_disc').textContent     = fmtEur(u_after_disc);
+  document.getElementById('wf_disc_f').textContent   = cf.toFixed(2);
+  document.getElementById('wf_disc_pct').textContent = pctOf(u_after_disc);
+  document.getElementById('wf_rej').textContent      = fmtEur(u_final);
+  document.getElementById('wf_rej_f').textContent    = fmt2(zs_ratio);
+  document.getElementById('wf_rej_pct').textContent  = pctOf(u_final);
+
+  const totalEl2 = document.getElementById('wf_total');
+  totalEl2.textContent = fmtEur(u_final);
+  totalEl2.style.color = u_final < 0 ? 'var(--gray)' : 'var(--red)';
+
+  const reduction = u_bcg !== 0 ? (1 - u_final / u_bcg) * 100 : 0;
+  document.getElementById('wf_reduction').textContent = (reduction >= 0 ? '−' : '+') + Math.abs(reduction).toFixed(0) + '\u202f%';
+  document.getElementById('wf_total_pct').textContent = pctOf(u_final);
+}
+
+function renderBars(sdy, zs, N, r_baseline) {
+  const vals = PROCEDURES.map(p => ({
+    name: currentLang === 'en' ? (p.name_en || p.name) : p.name,
+    r: p.r,
+    tip: currentLang === 'en' ? (p.tip_en || p.tip) : p.tip,
+    u: N * (p.r - r_baseline) * sdy * zs
+  }));
+  const maxAbs = Math.max(...vals.map(v => Math.abs(v.u)), 1);
+  const html = vals.map(v => {
+    const pct = Math.max(1, Math.abs(v.u) / maxAbs * 100).toFixed(1);
+    const neg = v.u < 0;
+    const tipAttr = v.tip.replace(/"/g, '&quot;');
+    return `<div class="bar-row">
+      <div class="bar-name" data-tip="${tipAttr}">${v.name} (${fmtR(v.r)})</div>
+      <div class="bar-track"><div class="bar-fill${neg ? ' dim' : ''}" style="width:${pct}%"></div></div>
+      <div class="bar-amount${neg ? ' dim' : ''}">${fmtEur(v.u)}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('bar_chart').innerHTML = html;
+}
+
+// ─── Sturman helpers ───────────────────────────────────────────────────────
+
+function syncS(sliderId, valId, fmt) {
+  document.getElementById(valId).textContent = fmt(+document.getElementById(sliderId).value);
+}
+
+// Murphy (1986) Case 2: top candidates reject offers selectively
+// zs_eff = [φ(z_lower) − φ(z_upper)] / SR_eff
+// z_lower = Φ⁻¹(1 − SR/(1−p_r))   z_upper = Φ⁻¹(1 − p_r·SR/(1−p_r))
+// Returns effective Zs; falls back to standard Zs if p_r = 0 or math breaks
+function computeZsRejection(sr, p_r) {
+  if (p_r <= 0) return computeZs(sr);
+  // Need 1 extra offer per rejection to end up with N hires
+  // Effective SR after rejections: sr_eff = sr / (1 − p_r)
+  // The top p_r fraction of tested candidates are offered but reject
+  const denom = 1 - p_r;
+  if (denom <= 0 || sr / denom >= 1) return 0;
+  const z_lower = normalCDFInverse(1 - sr / denom);
+  const z_upper = normalCDFInverse(1 - p_r * sr / denom);
+  return (normalPDF(z_lower) - normalPDF(z_upper)) / sr;
+}
+
+// Discounted cumulative factor with turnover (Boudreau 1983)
+// q = (1−p)/(1+i); CF = q·(1−q^T)/(1−q)
+function discountCumFactor(p, i, T) {
+  if (i === 0 && p === 0) return T;
+  const q = (1 - p) / (1 + i);
+  if (Math.abs(1 - q) < 1e-10) return T;
+  return q * (1 - Math.pow(q, T)) / (1 - q);
+}
+
+// ─── Tabs ──────────────────────────────────────────────────────────────────
+
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['basis', 'kosten', 'fsm', 'sturman'].forEach(t => {
+    document.getElementById('tab_' + t).style.display = t === id ? '' : 'none';
+  });
+}
+
+// ─── Presets ───────────────────────────────────────────────────────────────
+
+const PRESETS = {
+  fachkraft:  { n: 50,  salary: 55000,  sdy: 40, tenure: 5,   r_old: 0.15, r_new: 0.51, sr: 0.30, cn: 0,   co: 0 },
+  management: { n: 25,  salary: 70000,  sdy: 45, tenure: 5,   r_old: 0.20, r_new: 0.55, sr: 0.25, cn: 0,   co: 0 },
+  fuehrung:   { n: 10,  salary: 120000, sdy: 60, tenure: 6,   r_old: 0.20, r_new: 0.63, sr: 0.15, cn: 500, co: 0 },
+  gross:      { n: 500, salary: 50000,  sdy: 40, tenure: 4.5, r_old: 0.10, r_new: 0.51, sr: 0.20, cn: 0,   co: 0 },
+};
+
+function setPreset(name, btn) {
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const p = PRESETS[name];
+  document.getElementById('n_hires').value  = p.n;
+  document.getElementById('salary').value   = p.salary;
+  document.getElementById('sdy_pct').value  = p.sdy;
+  document.getElementById('tenure').value   = p.tenure;
+  document.getElementById('r_old').value    = p.r_old;
+  document.getElementById('r_new').value    = p.r_new;
+  document.getElementById('sr').value       = p.sr;
+  document.getElementById('cost_new').value = p.cn;
+  document.getElementById('cost_old').value = p.co;
+  calculate();
+}
+
+// ─── Tooltip system ────────────────────────────────────────────────────────
+
+const tooltip = document.getElementById('tooltip');
+let tipsOn = false;
+
+function toggleTips() {
+  tipsOn = !tipsOn;
+  document.body.classList.toggle('tips-on', tipsOn);
+  const btn = document.getElementById('tip_toggle');
+  btn.classList.toggle('active', tipsOn);
+  btn.textContent = tipsOn ? TRANS[currentLang]['tip-toggle-on'] : TRANS[currentLang]['tip-toggle-off'];
+  if (!tipsOn) tooltip.style.display = 'none';
+}
+
+document.addEventListener('mousemove', function(e) {
+  if (!tipsOn) return;
+  const el = e.target.closest('[data-tip]');
+  if (el) {
+    tooltip.innerHTML = el.getAttribute('data-tip');
+    tooltip.style.display = 'block';
+    const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+    let x = e.clientX + 18, y = e.clientY + 18;
+    if (x + tw > window.innerWidth  - 8) x = e.clientX - tw - 10;
+    if (y + th > window.innerHeight - 8) y = e.clientY - th - 10;
+    tooltip.style.left = x + 'px';
+    tooltip.style.top  = y + 'px';
+  } else {
+    tooltip.style.display = 'none';
+  }
+});
+
+// ─── Modal ─────────────────────────────────────────────────────────────────
+
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function closeOnBackdrop(e, id) {
+  if (e.target === e.currentTarget) closeModal(id);
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    ['modal_impressum', 'modal_datenschutz'].forEach(closeModal);
+  }
+});
+
+// ─── Init ──────────────────────────────────────────────────────────────────
+
+document.getElementById('footer_year').textContent = new Date().getFullYear();
+
+// Store German tips as data-tip-de baseline for setLang
+document.querySelectorAll('[data-tip-en]').forEach(function(el) {
+  if (!el.hasAttribute('data-tip-de')) {
+    el.setAttribute('data-tip-de', el.getAttribute('data-tip') || '');
+  }
+});
+
+calculate();
+</script>
+</body>
+</html>
